@@ -1,9 +1,5 @@
 fastapi
 uvicorn[standard]
-jinja2
+pydantic
 numpy
-random
-FastAPI
-BaseModel
-List
-os
+jinja2
