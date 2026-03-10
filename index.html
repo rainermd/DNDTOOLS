@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D&D Simulator Menu</title>
+
+    <!-- Immediately apply saved dark mode to prevent flash -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem("theme");
+            if (theme === "dark") {
+                document.documentElement.classList.add("dark");
+            }
+        })();
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind dark mode configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center h-screen font-sans transition-colors duration-300">
+<!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div>
+    <!-- Main Card -->
+    <div class="bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg text-center transition-colors duration-300">
+        <h1 class="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-200">D&D Simulator</h1>
+
+        <div class="flex flex-col md:flex-row gap-6 justify-center">
+            <button onclick="window.location.href='/combat'"
+                    class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                Combat Simulator
+            </button>
+            <button onclick="window.location.href='/dice'"
+                    class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                Dice Roller
+            </button>
+            <button onclick="window.location.href='/skillcheck'"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                Skill Check Difficulty
+            </button>
+            <button onclick="window.location.href='/initiative_tracker'" 
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg shadow text-lg">
+                Initiative Tracker
+            </button>  
+            <button onclick="window.location.href='/FAQ'" 
+                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                Dev Notes
+            </button>            
+        </div>
+    </div>
+
+    <!-- Dark Mode Toggle -->
+    <button onclick="toggleDarkMode()"
+            class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50 transition-colors duration-300">
+        🌙
+    </button>
+
+    <script>
+        function toggleDarkMode() {
+            const root = document.documentElement;
+            if (root.classList.contains("dark")) {
+                root.classList.remove("dark");
+                localStorage.setItem("theme", "light");
+            } else {
+                root.classList.add("dark");
+                localStorage.setItem("theme", "dark");
+            }
+        }
+    </script>
+</body>
+</html>

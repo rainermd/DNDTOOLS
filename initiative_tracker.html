@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>D&D Initiative Tracker</title>
+
+<!-- Immediately apply theme to prevent flash -->
+<script>
+(function(){
+    const theme = localStorage.getItem("theme");
+    if(theme === "dark"){
+        document.documentElement.classList.add("dark");
+    }
+})();
+</script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    darkMode: 'class'
+}
+</script>
+
+<!-- Custom Styles -->
+<style>
+/* Glow effect for current turn */
+.turnGlow {
+    outline: 3px solid rgba(34,197,94,0.9);
+    outline-offset: -2px;
+    animation: pulseGlow 1.2s infinite alternate;
+}
+
+@keyframes pulseGlow {
+    from { outline-color: rgba(34,197,94,0.6); }
+    to { outline-color: rgba(34,197,94,1); }
+}
+
+/* Circles for resources or indicators */
+.circle {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid black;
+    display: inline-block;
+    cursor: pointer;
+    background: white;
+}
+
+.dark .circle {
+    background: #1e293b;
+    border-color: #94a3b8;
+}
+
+.circle.filled {
+    background: black;
+}
+
+.dark .circle.filled {
+    background: #e5e7eb;
+}
+
+/* Row of resources or stats */
+.resourceRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    text-align: center;
+    margin-bottom: 2px;
+}
+</style>
+
+</head>
+
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
+<!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div>
+<h1 class="text-3xl font-bold mb-4">🎲 Initiative Tracker</h1>
+
+<div class="text-lg font-semibold mb-6">
+Round: <span id="round">1</span>
+</div>
+
+<div class="flex gap-3 mb-6 flex-wrap justify-center">
+
+<button onclick="addCombatant()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">
+Add
+</button>
+
+<button onclick="rollInitiative()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded shadow">
+Roll
+</button>
+
+<button onclick="sortInitiative()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">
+Sort
+</button>
+
+<button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">
+Next (Space)
+</button>
+
+<button onclick="resetEncounter()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded shadow">
+Reset
+</button>
+
+<button onclick="clearEncounter()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow">
+Clear
+</button>
+
+</div>
+
+<div class="w-full max-w-7xl mx-auto px-2">
+
+<table class="w-full shadow rounded text-xs table-fixed bg-white dark:bg-slate-800 transition-colors">
+
+<thead class="bg-slate-200 dark:bg-slate-700 text-center">
+<tr>
+<th class="p-1 w-6"></th>
+<th class="p-1 w-14">Init</th>
+<th class="p-1 w-36">Name</th>
+<th class="p-1 w-16">HP</th>
+<th class="p-1 w-14">AC</th>
+<th class="p-1 w-44">Resources</th>
+<th class="p-1 w-32">Conditions</th>
+<th class="p-1 w-40">Notes</th>
+<th class="p-1 w-12">Color</th>
+<th class="p-1 w-16"></th>
+</tr>
+</thead>
+
+<tbody id="combat-table"></tbody>
+
+</table>
+
+</div>
+
+<div class="flex justify-center pt-2">
+<button onclick="goToMenu()"
+class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+Back to Menu
+</button>
+</div>
+
+<script>
+
+let combatants=[]
+let currentTurn=0
+let round=1
+let dragId=null
+
+const STORAGE_KEY="initiative_tracker_state"
+
+const CONDITIONS=[
+"Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated",
+"Invisible","Paralyzed","Petrified","Poisoned","Prone","Restrained",
+"Stunned","Unconscious","Concentrating"
+]
+
+function loadState(){
+const saved=localStorage.getItem(STORAGE_KEY)
+if(saved){
+const data=JSON.parse(saved)
+combatants=data.combatants||[]
+currentTurn=data.currentTurn||0
+round=data.round||1
+}
+}
+
+function saveState(){
+localStorage.setItem(STORAGE_KEY,JSON.stringify({
+combatants,currentTurn,round
+}))
+}
+
+function addCombatant(){
+combatants.push({
+id:Date.now(),
+init:"",
+name:"Combatant",
+hp:"",
+ac:"",
+notes:"",
+color:"#e5e7eb",
+conditions:[],
+resources:[]
+})
+saveState()
+render()
+}
+
+function duplicateCombatant(id){
+
+const index=combatants.findIndex(c=>c.id===id)
+const copy=JSON.parse(JSON.stringify(combatants[index]))
+copy.id=Date.now()
+
+combatants.splice(index+1,0,copy)
+
+saveState()
+render()
+}
+
+function removeCombatant(id){
+combatants=combatants.filter(c=>c.id!==id)
+saveState()
+render()
+}
+
+function createResource(id){
+
+const name=document.getElementById("resName_"+id).value
+const amount=parseInt(document.getElementById("resCount_"+id).value)
+
+if(!name || !amount) return
+
+const c=combatants.find(c=>c.id===id)
+
+c.resources.push({
+name,
+max:amount,
+used:Array(amount).fill(false)
+})
+
+saveState()
+render()
+}
+
+function deleteResource(cid,rid){
+const c=combatants.find(c=>c.id===cid)
+c.resources.splice(rid,1)
+saveState()
+render()
+}
+
+function toggleCircle(cid,rid,index){
+const c=combatants.find(c=>c.id===cid)
+c.resources[rid].used[index]=!c.resources[rid].used[index]
+saveState()
+render()
+}
+
+function addCondition(id,condition){
+
+if(!condition) return
+const c=combatants.find(c=>c.id===id)
+
+if(!c.conditions.includes(condition)){
+c.conditions.push(condition)
+}
+
+saveState()
+render()
+}
+
+function removeCondition(id,condition){
+const c=combatants.find(c=>c.id===id)
+c.conditions=c.conditions.filter(x=>x!==condition)
+saveState()
+render()
+}
+
+function update(id,key,value){
+
+const c=combatants.find(c=>c.id===id)
+
+if(key==="init"||key==="hp"||key==="ac"){
+c[key]=value===""?"":parseInt(value)
+}else{
+c[key]=value
+}
+
+saveState()
+}
+
+function updateColor(id,value,input){
+const c=combatants.find(c=>c.id===id)
+c.color=value
+input.closest("tr").style.backgroundColor=value
+saveState()
+}
+
+function dragStart(e){
+dragId=e.currentTarget.dataset.id
+}
+
+function dragOver(e){
+e.preventDefault()
+}
+
+function dropRow(e){
+
+e.preventDefault()
+
+const targetId=e.currentTarget.dataset.id
+
+const from=combatants.findIndex(c=>c.id==dragId)
+const to=combatants.findIndex(c=>c.id==targetId)
+
+const moved=combatants.splice(from,1)[0]
+combatants.splice(to,0,moved)
+
+saveState()
+render()
+}
+
+function render(){
+
+const table=document.getElementById("combat-table")
+table.innerHTML=""
+
+document.getElementById("round").innerText=round
+
+combatants.forEach((c,index)=>{
+
+const row=document.createElement("tr")
+
+row.dataset.id=c.id
+row.style.backgroundColor=c.color
+row.draggable=true
+
+row.ondragstart=dragStart
+row.ondragover=dragOver
+row.ondrop=dropRow
+
+if(index===currentTurn){
+row.classList.add("turnGlow")
+}
+
+row.innerHTML=`
+
+<td class="text-center font-bold">${index===currentTurn?"➤":""}</td>
+
+<td class="text-center">
+<input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'init',this.value)">
+</td>
+
+<td class="text-center">
+<input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'name',this.value)">
+</td>
+
+<td class="text-center">
+<input value="${c.hp}" class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'hp',this.value)">
+</td>
+
+<td class="text-center">
+<input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'ac',this.value)">
+</td>
+
+<td class="text-xs">
+
+${c.resources.map((r,rid)=>`
+
+<div class="resourceRow">
+
+<span class="font-semibold">${r.name}</span>
+
+<button onclick="deleteResource(${c.id},${rid})"
+class="text-red-600 font-bold">✖</button>
+
+${r.used.map((u,i)=>`
+<div onclick="toggleCircle(${c.id},${rid},${i})"
+class="circle ${u?"filled":""}"></div>
+`).join("")}
+
+</div>
+
+`).join("")}
+
+<div class="flex justify-center gap-1 mt-1">
+
+<input id="resName_${c.id}" placeholder="Res"
+class="border rounded text-xs px-1 w-16 bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()">
+
+<input id="resCount_${c.id}" type="number" placeholder="#"
+class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()">
+
+<button onclick="createResource(${c.id})"
+class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs">+</button>
+
+</div>
+
+</td>
+
+<td class="text-center">
+
+<div class="flex flex-wrap gap-1 justify-center">
+
+${c.conditions.map(cond=>`
+<span class="bg-blue-200 dark:bg-blue-700 px-1 rounded text-[10px]">
+${cond}
+<button onclick="removeCondition(${c.id},'${cond}')">x</button>
+</span>
+`).join("")}
+
+</div>
+
+<select class="text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
+onchange="addCondition(${c.id},this.value);this.value=''">
+<option value="">+</option>
+${CONDITIONS.map(c=>`<option>${c}</option>`).join("")}
+</select>
+
+</td>
+
+<td class="p-1">
+<textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'notes',this.value)">${c.notes}</textarea>
+</td>
+
+<td class="text-center">
+<input type="color" value="${c.color}"
+onmousedown="event.stopPropagation()"
+oninput="updateColor(${c.id},this.value,this)">
+</td>
+
+<td class="text-center space-x-1">
+
+<button onclick="duplicateCombatant(${c.id})"
+class="bg-green-200 px-1 rounded text-green-800 font-bold">✔</button>
+
+<button onclick="removeCombatant(${c.id})"
+class="bg-red-200 px-1 rounded text-red-800 font-bold">✖</button>
+
+</td>
+`
+
+table.appendChild(row)
+
+})
+
+}
+
+function rollInitiative(){
+combatants.forEach(c=>{
+if(c.init===""){
+c.init=Math.floor(Math.random()*20)+1
+}
+})
+saveState()
+render()
+}
+
+function sortInitiative(){
+
+combatants.sort((a,b)=>(b.init||0)-(a.init||0))
+currentTurn=0
+round=1
+
+saveState()
+render()
+}
+
+function nextTurn(){
+
+if(combatants.length===0)return
+
+currentTurn++
+
+if(currentTurn>=combatants.length){
+currentTurn=0
+round++
+}
+
+saveState()
+render()
+}
+
+function resetEncounter(){
+
+combatants.forEach(c=>c.init="")
+
+currentTurn=0
+round=1
+
+saveState()
+render()
+}
+
+function clearEncounter(){
+
+localStorage.removeItem(STORAGE_KEY)
+
+combatants=[]
+currentTurn=0
+round=1
+
+render()
+}
+
+document.addEventListener("keydown",function(e){
+
+if(e.code==="Space" && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)){
+e.preventDefault()
+nextTurn()
+}
+
+})
+
+loadState()
+render()
+
+</script>
+
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+function toggleDarkMode(){
+
+const root=document.documentElement
+
+if(root.classList.contains("dark")){
+root.classList.remove("dark")
+localStorage.setItem("theme","light")
+}else{
+root.classList.add("dark")
+localStorage.setItem("theme","dark")
+}
+
+}
+function goToMenu(){
+window.location.href="/"
+}
+</script>
+
+</body>
+</html>

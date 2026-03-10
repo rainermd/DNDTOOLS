@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dev Notes</title>
+
+    <!-- Immediately apply saved dark mode to prevent flash -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem("theme");
+            if (theme === "dark") {
+                document.documentElement.classList.add("dark");
+            }
+        })();
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind dark mode configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors">
+    <!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div>
+    <h1 class="text-4xl font-bold mb-10 text-center">📝 Roadmap & Bug Tracker</h1>
+
+    <div class="w-full max-w-4xl flex flex-col gap-6">
+       <!-- ROADMAP -->
+<div class="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6 transition-colors">
+    <h2 class="text-2xl font-semibold mb-4">Roadmap</h2>
+    <pre class="whitespace-pre-wrap bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 p-3 rounded border dark:border-slate-600">
+1.) Combat Simulator Upgrade
+    - While I'm going to keep the simple simulator, I intend to make a much more advanced and D&D-like combat simulator with spellcasting, save DCs, damage types, etc.
+    - This will also be the backbone for a D&D combat tutorial for new players, and may become a full game!
+    - This will be modular with JSON, so expect slow progress. The current priority is: Spellcasting and Saving Throws, Damage Types and Resistances, Conditions and Condition Immunities, Class Features, Subclass Features, Legendary Actions, AI Options, Importing Monsters from Core D&D Content, Feats, Miscellaneous Features
+2.) Dice Rolling Updates
+    - Improve 2D dice visuals (VFX)
+    - There is currently no plan to include 3D dice and rolling physics
+3.) Initiative Tracker Upgrade
+    - Dungeon Masters can host a combat using the Initiative Tracker!
+    - Players can join using a combat code, allowing them to see the initiative themselves and keep track of the order and their own stats
+    - DM can hide monsters and monster stats using "fog of war"
+4.) NPC Name generator
+    - Include new part that generates names for dungeon masters
+    - Can do quick name, or can have inputs to give name more personality
+5.) Wild Magic Surge
+    - Include Wild Magic Surge table and rolling
+    - Allow feature for others to add to wild magic table (needs to be approved by me prior to working)
+6.) Deck of Many Things
+    - Include Deck of Many Things drawer
+    - Use both decks, with a toggle to switch
+    - Calculate probabilities of good vs. bad outcomes
+7.) Miscellaneous
+    - Speed up simulation times
+    - Include tool-tips to help people use the site
+    - Include a buy me a Ko-Fi
+    - Include links to my other projects
+    - Include ability for people to comment/suggest?
+    - Move from local to web
+    - Include special animations for Nat 1 and Nat 20
+    - Include different dice in Skill Check Difficulty (1d100 for Divine Intervention)
+    - Include extra conditions in Initiative Tracker (Exhaustion, Bless, etc.)
+    </pre>
+</div>
+
+<div class="w-full max-w-4xl flex flex-col gap-6">
+       <!-- BUGS -->
+<div class="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6 transition-colors">
+    <h2 class="text-2xl font-semibold mb-4">Bugs</h2>
+    <pre class="whitespace-pre-wrap bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 p-3 rounded border dark:border-slate-600">
+1.) Check Player Level and CR scaling with D&D rules
+2.) Color mapping does not work yet for Combat Simulator
+3.) Return error messages after attempting to simulate with no values entered
+4.) Advantage is not defined for other dice types
+5.) Return error message after using multiple dice with adv/disadvantage 
+6.) Fix dice VFX (no black borders, larger size)
+7.) Default color in Initiative Tracker should change depending on Dark/Light mode 
+8.) Health modification on Initiative Tracker does not work
+    </pre>
+</div>
+  
+
+        <!-- CONTROLS -->
+        <div class="flex justify-center gap-4 mt-4">
+            <button onclick="goToMenu()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow text-lg">Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- DARK MODE BUTTON -->
+    <button onclick="toggleDarkMode()" class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">🌙</button>
+
+    <script>
+        function goToMenu() {
+            window.location.href = "/";
+        }
+
+        function toggleDarkMode(){
+            const root = document.documentElement;
+            if(root.classList.contains("dark")){
+                root.classList.remove("dark");
+                localStorage.setItem("theme","light");
+            } else {
+                root.classList.add("dark");
+                localStorage.setItem("theme","dark");
+            }
+        }
+    </script>
+</body>
+</html>

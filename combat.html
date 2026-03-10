@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D&D Combat Simulator</title>
+
+    <!-- Immediately apply saved dark mode to prevent flash -->
+    <script>
+    (function() {
+        const theme = localStorage.getItem("theme");
+        if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+        }
+    })();
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind dark mode configuration -->
+    <script>
+    tailwind.config = {
+        darkMode: 'class'
+    }
+    </script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors">
+   <!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div> 
+    <h1 class="text-4xl font-bold mb-10">⚔️ Combat Simulator</h1>
+
+    <div class="w-full max-w-6xl">
+
+        <!-- PARTY -->
+        <div class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Party</h2>
+            <div id="party-list" class="flex flex-wrap justify-center gap-6 mb-4"></div>
+            <div class="flex justify-center gap-4">
+                <button onclick="addCreature('party')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow">Add Player</button>
+                <button onclick="removeCreature('party')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow">Remove Player</button>
+            </div>
+        </div>
+
+        <!-- MONSTERS -->
+        <div class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Monsters</h2>
+            <div id="monster-list" class="flex flex-wrap justify-center gap-6 mb-4"></div>
+            <div class="flex justify-center gap-4">
+                <button onclick="addCreature('monster')" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded shadow">Add Monster</button>
+                <button onclick="removeCreature('monster')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow">Remove Monster</button>
+            </div>
+        </div>
+
+        <!-- OPTIONS -->
+        <div class="flex flex-wrap justify-center gap-8 mb-8 text-sm">
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="auto_hit" checked class="scale-110"> Auto-Crit Hits
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="random_target" class="scale-110"> Random Targeting
+            </label>
+            <label class="flex items-center gap-2">
+                <input type="checkbox" id="monsters_finish" class="scale-110"> Monsters Finish Players
+            </label>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="flex justify-center gap-6 mb-8">
+            <button id="simulate_btn" onclick="runCombat()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg shadow text-lg">Run Simulation</button>
+            <button onclick="goToMenu()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg shadow text-lg">Back to Menu</button>
+        </div>
+
+        <!-- RESULTS -->
+        <div class="flex justify-center">
+            <div id="results" class="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6 min-w-[420px] transition-colors"></div>
+        </div>
+
+    </div>
+
+    <script>
+        /* NAME LISTS */
+        const playerFirstNames = ["Gromple","Bork","Thaddeus","Lumpy","Wizzle","Crank","Fizzle","Tobias","Zarn","Blorp"];
+        const playerLastNames = ["Stanley","McFizzle","Thunderpants","Wobblebottom","Snickerdoodle","Ironbelly","Crankshaft","Moonhammer"];
+        const monsterFirstNames = ["Skarnak","Groth","Morb","Zilth","Kragnar","Blight","Dread","Grizzle","Throk"];
+        const monsterLastNames = ["Doomwhisper","the Cruel","Bonecrusher","Nightfang","Rotmaw","Soulrender","Skullgnawer"];
+
+        function randomName(type) {
+            const first = type === 'party' ? playerFirstNames : monsterFirstNames;
+            const last = type === 'party' ? playerLastNames : monsterLastNames;
+            return first[Math.floor(Math.random() * first.length)] + " " + last[Math.floor(Math.random() * last.length)];
+        }
+
+        function randomColor() {
+            return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6,'0');
+        }
+
+        /* MONSTER STATS BY CR */
+        const MONSTER_STAT_TABLE = {
+            "0":  { hp: [1,4], ac: 10, atk: 2 },
+            "1/8":{ hp: [5,10], ac: 11, atk: 3 },
+            "1/4":{ hp: [11,20], ac: 12, atk: 3 },
+            "1/2":{ hp: [21,35], ac: 13, atk: 4 },
+            "1":  { hp: [36,49], ac: 13, atk: 5 },
+            "2":  { hp: [50,70], ac: 13, atk: 6 },
+            "3":  { hp: [71,85], ac: 14, atk: 6 },
+            "4":  { hp: [86,100], ac: 14, atk: 7 },
+            "5":  { hp: [101,115], ac: 15, atk: 7 },
+            "6":  { hp: [116,130], ac: 15, atk: 8 },
+            "7":  { hp: [131,145], ac: 15, atk: 8 },
+            "8":  { hp: [146,160], ac: 16, atk: 8 },
+            "9":  { hp: [161,175], ac: 16, atk: 9 },
+            "10": { hp: [176,190], ac: 17, atk: 9 },
+            "11": { hp: [191,205], ac: 17, atk: 9 },
+            "12": { hp: [206,220], ac: 17, atk: 10 },
+            "13": { hp: [221,235], ac: 18, atk: 10 },
+            "14": { hp: [236,250], ac: 18, atk: 10 },
+            "15": { hp: [251,265], ac: 18, atk: 11 },
+            "16": { hp: [266,280], ac: 18, atk: 11 },
+            "17": { hp: [281,295], ac: 19, atk: 11 },
+            "18": { hp: [296,310], ac: 19, atk: 12 },
+            "19": { hp: [311,325], ac: 19, atk: 12 },
+            "20": { hp: [326,340], ac: 19, atk: 12 },
+            "21": { hp: [341,355], ac: 19, atk: 13 },
+            "22": { hp: [356,370], ac: 19, atk: 13 },
+            "23": { hp: [371,385], ac: 19, atk: 13 },
+            "24": { hp: [386,400], ac: 19, atk: 14 },
+            "25": { hp: [401,415], ac: 19, atk: 14 },
+            "26": { hp: [416,430], ac: 19, atk: 14 },
+            "27": { hp: [431,445], ac: 19, atk: 15 },
+            "28": { hp: [446,460], ac: 19, atk: 15 },
+            "29": { hp: [461,475], ac: 19, atk: 15 },
+            "30": { hp: [476,500], ac: 19, atk: 16 }
+        };
+
+        let partyCount = 0;
+        let monsterCount = 0;
+        const CR_VALUES = ["0","1/8","1/4","1/2", ...Array.from({length:30},(_,i)=>String(i+1))];
+
+        function addCreature(type) {
+            const container = document.getElementById(type==='party' ? 'party-list' : 'monster-list');
+            const index = type==='party' ? partyCount : monsterCount;
+            const prefix = type+'_'+index;
+            const name = randomName(type);
+            const color = type === "party" ? "#22c55e" : "#ef4444";
+            const div = document.createElement('div');
+            div.className = 'creature bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-md rounded-xl p-4 w-[240px]';
+            div.style.border = '3px solid ' + color;
+
+            const crSelect = type==='party' ? '' : `
+                <div class="flex justify-between mb-2 text-sm">
+                    <label>CR:</label>
+                    <select id="${prefix}_cr" class="border dark:border-slate-600 rounded px-1 w-20 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
+                        ${CR_VALUES.map(v=>`<option value="${v}">${v}</option>`).join('')}
+                    </select>
+                </div>
+                <button onclick="generateMonster(${index})" class="mb-2 w-full bg-purple-200 hover:bg-purple-300 dark:bg-purple-600 dark:hover:bg-purple-500 text-black dark:text-white rounded text-sm">Generate</button>
+            `;
+
+            div.innerHTML = `
+                <h4 class="font-semibold mb-2 text-center" id="${prefix}_header" contenteditable="true" style="color:${color}; cursor:text;" oninput="document.getElementById('${prefix}_name').value=this.innerText">
+                    ${name}
+                </h4>
+                <input type="hidden" id="${prefix}_name" value="${name}">
+                ${type==='party' ? `
+                <div class="flex justify-between mb-2 text-sm">
+                    <label>Level:</label>
+                    <input id="${prefix}_level" type="number" value="1" min="1" max="20" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
+                </div>
+                <button onclick="generatePlayer(${index})" class="mb-2 w-full bg-blue-200 hover:bg-blue-300 dark:bg-blue-600 dark:hover:bg-blue-500 text-black dark:text-white rounded text-sm">Generate</button>
+                ` : crSelect}
+                ${statInputs(prefix)}
+            `;
+            container.appendChild(div);
+            if(type==='party') partyCount++; else monsterCount++;
+            updateSimButton();
+        }
+
+        function removeCreature(type){
+            const container = document.getElementById(type==='party' ? 'party-list' : 'monster-list');
+            if(container.lastElementChild){
+                container.removeChild(container.lastElementChild);
+                if(type==='party') partyCount--; else monsterCount--;
+            }
+            updateSimButton();
+        }
+
+        function statInputs(prefix){
+            return `
+                <div class="flex justify-between mb-2 text-sm"><label>HP:</label><input id="${prefix}_hp" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>AC:</label><input id="${prefix}_ac" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>To Attack:</label><input id="${prefix}_attack_bonus" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>Dice Number:</label><input id="${prefix}_n" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>Dice Type:</label><input id="${prefix}_dice" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>Modifier:</label><input id="${prefix}_mod" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between mb-2 text-sm"><label>Number of Attacks:</label><input id="${prefix}_attacks" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+                <div class="flex justify-between text-sm"><label>Initiative:</label><input id="${prefix}_init" type="number" step="1" class="border dark:border-slate-600 rounded px-1 w-16 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"></div>
+            `;
+        }
+
+        function generatePlayer(i){
+            const lvl = parseInt(document.getElementById(`party_${i}_level`).value);
+            document.getElementById(`party_${i}_hp`).value = 10 + lvl*6;
+            document.getElementById(`party_${i}_ac`).value = 14 + Math.floor(lvl/3);
+            document.getElementById(`party_${i}_attack_bonus`).value = 5 + Math.floor(lvl/2);
+            document.getElementById(`party_${i}_n`).value = 1;
+            document.getElementById(`party_${i}_dice`).value = 8;
+            document.getElementById(`party_${i}_mod`).value = Math.floor(lvl/3);
+            document.getElementById(`party_${i}_attacks`).value = 1 + Math.floor(lvl/5);
+            document.getElementById(`party_${i}_init`).value = 2;
+            updateSimButton();
+        }
+
+        function generateMonster(i){
+            const crVal = document.getElementById(`monster_${i}_cr`).value;
+            const crKey = crVal;
+            const stats = MONSTER_STAT_TABLE[crKey] || MONSTER_STAT_TABLE["0"];
+            const minHP = stats.hp[0];
+            const maxHP = stats.hp[1];
+            const hp = Math.floor((minHP + maxHP)/2);
+
+            document.getElementById(`monster_${i}_hp`).value = hp;
+            document.getElementById(`monster_${i}_ac`).value = stats.ac;
+            document.getElementById(`monster_${i}_attack_bonus`).value = stats.atk;
+            document.getElementById(`monster_${i}_n`).value = 1 + Math.floor(stats.atk/5);
+            document.getElementById(`monster_${i}_dice`).value = 8;
+            document.getElementById(`monster_${i}_mod`).value = stats.atk;
+            document.getElementById(`monster_${i}_attacks`).value = 1 + Math.floor(stats.atk/4);
+            document.getElementById(`monster_${i}_init`).value = Math.floor(stats.atk/2);
+            updateSimButton();
+        }
+
+        function collectCreatures(type, count){
+            const arr = [];
+            for(let i=0; i<count; i++){
+                const p = `${type}_${i}`;
+                const hp = document.getElementById(`${p}_hp`);
+                if(!hp) continue;
+                arr.push({
+                    hp: parseInt(hp.value)||1,
+                    ac: parseInt(document.getElementById(`${p}_ac`).value)||10,
+                    attack_bonus: parseInt(document.getElementById(`${p}_attack_bonus`).value)||0,
+                    n: parseInt(document.getElementById(`${p}_n`).value)||1,
+                    dice: parseInt(document.getElementById(`${p}_dice`).value)||6,
+                    mod: parseInt(document.getElementById(`${p}_mod`).value)||0,
+                    attacks: parseInt(document.getElementById(`${p}_attacks`).value)||1,
+                    init: parseInt(document.getElementById(`${p}_init`).value)||0,
+                    is_player: type==="party"
+                });
+            }
+            return arr;
+        }
+
+        function statsValid(){
+            const inputs = document.querySelectorAll("#party-list input[type='number'], #monster-list input[type='number']");
+            for(const input of inputs){
+                if(input.value === "" || isNaN(parseInt(input.value))){
+                    return false;
+                }
+            }
+            return partyCount > 0 && monsterCount > 0;
+        }
+
+        function updateSimButton(){
+            const btn = document.getElementById("simulate_btn");
+            if(statsValid()){
+                btn.disabled = false;
+                btn.title = "";
+                btn.classList.remove("opacity-50","cursor-not-allowed");
+            } else {
+                btn.disabled = true;
+                btn.title = "Please enter valid values for all player/monster stats!";
+                btn.classList.add("opacity-50","cursor-not-allowed");
+            }
+        }
+
+        async function runCombat(){
+
+            if(!statsValid()){
+                alert("Please enter valid values for all player/monster stats!");
+                return;
+            }
+
+            const party = collectCreatures("party", partyCount);
+            const monsters = collectCreatures("monster", monsterCount);
+            const res = await fetch("/combat_simulate", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    party: party,
+                    monsters: monsters,
+                    auto_hit: document.getElementById("auto_hit").checked,
+                    random_target: document.getElementById("random_target").checked,
+                    monsters_finish: document.getElementById("monsters_finish").checked
+                })
+            });
+            const data = await res.json();
+            displayResults(data);
+        }
+
+        function bar(label,value,color){
+            return `
+                <div class="mb-4">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>${label}</span>
+                        <span>${(value*100).toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-slate-700 rounded h-4">
+                        <div class="${color} h-4 rounded transition-all duration-700 ease-out" style="width:0%" data-width="${value*100}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function classify(win){
+            if(win>0.9) return ["Easy","bg-green-500"];
+            if(win>0.7) return ["Medium","bg-yellow-500"];
+            if(win>0.4) return ["Hard","bg-orange-500"];
+            return ["Deadly","bg-red-600"];
+        }
+
+        function displayResults(r){
+            const [difficulty,color] = classify(r.party_win_probability);
+            document.getElementById("results").innerHTML =
+                bar("Party Win", r.party_win_probability, "bg-green-500") +
+                bar("TPK Chance", r.tpk_probability, "bg-red-500") +
+                bar("Any Death", r.any_death, "bg-yellow-500") +
+                `<div class="mt-4 text-center font-semibold text-lg">
+                    Difficulty: <span class="${color} text-white px-3 py-1 rounded">${difficulty}</span>
+                </div>
+                <div class="mt-2 text-sm text-center">
+                    Avg Rounds: ${r.avg_rounds.toFixed(2)}<br>
+                    Avg Player Deaths: ${r.avg_player_deaths.toFixed(2)}
+                </div>`;
+            setTimeout(()=>{
+                document.querySelectorAll("[data-width]").forEach(el=>{
+                    el.style.width = el.dataset.width;
+                });
+            },50);
+        }
+
+        addCreature("party");
+        addCreature("monster");
+
+        document.addEventListener("input", updateSimButton);
+        updateSimButton();
+
+        function goToMenu(){ window.location.href = "/"; }
+
+        function toggleDarkMode(){
+            const root = document.documentElement;
+            if(root.classList.contains("dark")){
+                root.classList.remove("dark");
+                localStorage.setItem("theme","light");
+            } else {
+                root.classList.add("dark");
+                localStorage.setItem("theme","dark");
+            }
+        }
+    </script>
+
+    <!-- DARK MODE BUTTON -->
+    <button onclick="toggleDarkMode()" class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">🌙</button>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dice Roller</title>
+
+<!-- Immediately apply saved dark mode to prevent flash -->
+<script>
+(function() {
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+    }
+})();
+</script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Tailwind dark mode configuration -->
+<script>
+tailwind.config = {
+    darkMode: 'class'
+}
+</script>
+
+<style>
+.dice {
+    display:inline-flex;
+    width:3rem;
+    height:3rem;
+    align-items:center;
+    justify-content:center;
+    font-size:1.5rem;
+    font-weight:bold;
+    margin:0.25rem;
+    border:2px solid #333;
+    box-shadow:2px 2px 5px rgba(0,0,0,0.3);
+    transition:transform .2s, background-color .2s;
+    color:white;
+}
+
+.d2 { background:#f87171; border-radius:50%; }
+.d3 { background:#60a5fa; clip-path:polygon(50% 0%,0% 100%,100% 100%); border-radius:10%; }
+.d4 { background:#34d399; clip-path:polygon(50% 0%,0% 100%,100% 100%); }
+.d6 { background:#fbbf24; }
+.d8 { background:#a78bfa; clip-path:polygon(50% 0%,80% 50%,50% 100%,20% 50%); }
+.d10{ background:#f472b6; clip-path:polygon(50% 0%,100% 45%,100% 55%,50% 100%,0% 55%,0% 45%); }
+.d12{ background:#facc15; clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%); }
+.d20{ background:#34a1eb; clip-path:polygon(50% 0,100% 33.34%,100% 66.7%,50% 100%,0% 66.7%,0% 33.34%); }
+.d100{ background:#10b981; border-radius:50%; width:4rem; height:4rem; font-size:1.75rem; }
+
+@keyframes diceShake{
+    0%{transform:translate(2px,2px) rotate(0deg);}
+    25%{transform:translate(-2px,-2px) rotate(-5deg);}
+    50%{transform:translate(2px,-2px) rotate(5deg);}
+    75%{transform:translate(-2px,2px) rotate(-3deg);}
+    100%{transform:translate(0,0) rotate(0deg);}
+}
+
+.shake{animation:diceShake .25s;}
+
+#dice-display{
+    min-height:4rem;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:.5rem;
+    margin-top:1rem;
+}
+</style>
+</head>
+
+
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-200 font-sans min-h-screen flex flex-col items-center p-6 transition-colors">
+<!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div>
+<div class="w-full max-w-xl mb-4">
+<a href="/" class="inline-block px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">
+← Back to Menu
+</a>
+</div>
+
+<h1 class="text-3xl font-bold mb-6">Dice Roller</h1>
+
+<div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg w-full max-w-xl transition-colors">
+
+<div id="dice-container" class="space-y-4">
+
+<div class="flex gap-2 items-center dice-row">
+
+<input type="number" min="1" value="1"
+class="w-16 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700">
+
+<select class="w-20 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700">
+<option value="2">d2</option>
+<option value="3">d3</option>
+<option value="4">d4</option>
+<option value="6" selected>d6</option>
+<option value="8">d8</option>
+<option value="10">d10</option>
+<option value="12">d12</option>
+<option value="20">d20</option>
+<option value="100">d100</option>
+</select>
+
+<select class="w-12 p-2 border dark:border-slate-600 rounded mod-sign bg-white dark:bg-slate-700">
+<option value="+">+</option>
+<option value="-">-</option>
+</select>
+
+<input type="number" min="0" value="0"
+class="w-16 p-2 border dark:border-slate-600 rounded mod-value bg-white dark:bg-slate-700">
+
+<button onclick="removeDiceRow(this)"
+class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
+Remove
+</button>
+
+</div>
+</div>
+
+<div class="flex gap-4 mt-4 flex-wrap">
+
+<button onclick="lastAction=rollDice; rollDice()"
+class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+Roll
+</button>
+
+<button onclick="addDiceRow()"
+class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+Add Dice
+</button>
+
+<button onclick="clearHistory()"
+class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+Clear History
+</button>
+
+<button onclick="toggleAdvantage()" id="advBtn"
+class="px-3 py-2 bg-indigo-600 text-white rounded">
+Advantage
+</button>
+
+<button onclick="toggleDisadvantage()" id="disBtn"
+class="px-3 py-2 bg-red-600 text-white rounded">
+Disadvantage
+</button>
+
+</div>
+
+<div id="dice-display" class="mt-6"></div>
+
+<div id="history" class="mt-6 space-y-2"></div>
+
+<audio id="diceSound" preload="auto">
+<source src="https://cdn.freesound.org/previews/348/348654_6245791-lq.mp3">
+</audio>
+
+</div>
+
+<script>
+let history = JSON.parse(localStorage.getItem("diceHistory") || "[]");
+let lastAction = null;
+let advantage = false;
+let disadvantage = false;
+
+/* Dice Row UI */
+function addDiceRow(){
+const container=document.getElementById("dice-container");
+const row=document.createElement("div");
+row.className="flex gap-2 items-center dice-row";
+
+row.innerHTML=`
+<input type="number" min="1" value="1"
+class="w-16 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700">
+
+<select class="w-20 p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-700">
+<option value="2">d2</option>
+<option value="3">d3</option>
+<option value="4">d4</option>
+<option value="6" selected>d6</option>
+<option value="8">d8</option>
+<option value="10">d10</option>
+<option value="12">d12</option>
+<option value="20">d20</option>
+<option value="100">d100</option>
+</select>
+
+<select class="w-12 p-2 border dark:border-slate-600 rounded mod-sign bg-white dark:bg-slate-700">
+<option value="+">+</option>
+<option value="-">-</option>
+</select>
+
+<input type="number" min="0" value="0"
+class="w-16 p-2 border dark:border-slate-600 rounded mod-value bg-white dark:bg-slate-700">
+
+<button onclick="removeDiceRow(this)"
+class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
+Remove
+</button>`;
+
+container.appendChild(row);
+}
+
+function removeDiceRow(btn){
+btn.parentElement.remove();
+}
+
+/* Dice Rolling */
+async function rollDice(customRolls=null){
+
+const rows=document.querySelectorAll(".dice-row");
+let rolls=[];
+
+if(customRolls){
+rolls=customRolls;
+}else{
+
+rows.forEach(row=>{
+
+const n=parseInt(row.children[0].value);
+const d=parseInt(row.children[1].value);
+
+const sign=row.querySelector(".mod-sign").value;
+let value=Math.max(0,parseInt(row.querySelector(".mod-value").value)||0);
+
+let mod=sign==="-"?-value:value;
+
+if(n>0 && d>1) rolls.push({n,d,mod});
+
+});
+
+}
+
+if(rolls.length===0) return;
+
+lastAction=()=>rollDice(rolls);
+
+const diceDisplay=document.getElementById("dice-display");
+diceDisplay.innerHTML="";
+
+rolls.forEach(r=>{
+for(let i=0;i<r.n;i++){
+
+const die=document.createElement("div");
+die.className=`dice d${r.d} shake`;
+die.textContent=`d${r.d}`;
+
+diceDisplay.appendChild(die);
+
+}
+});
+
+document.getElementById("diceSound").play();
+await new Promise(r=>setTimeout(r,250));
+
+let overallTotal=0;
+let diceIndex=0;
+let historyResults=[];
+
+rolls.forEach(r=>{
+
+let rowResults=[];
+
+for(let i=0;i<r.n;i++){
+
+let finalRoll;
+let displayText;
+
+if(r.d===20 && (advantage||disadvantage)){
+
+const r1=Math.floor(Math.random()*20)+1;
+const r2=Math.floor(Math.random()*20)+1;
+
+finalRoll=advantage?Math.max(r1,r2):Math.min(r1,r2);
+displayText=`${r1}/${r2}`;
+
+}else{
+
+finalRoll=Math.floor(Math.random()*r.d)+1;
+displayText=finalRoll;
+
+}
+
+const dieDiv=diceDisplay.children[diceIndex];
+dieDiv.textContent=displayText;
+dieDiv.classList.remove("shake");
+
+rowResults.push(finalRoll);
+overallTotal+=finalRoll+r.mod;
+
+diceIndex++;
+
+}
+
+historyResults.push({
+dice:`${r.n}d${r.d}`,
+rolls:rowResults,
+mod:r.mod
+});
+
+});
+
+addHistoryLine({
+results:historyResults,
+overall_total:overallTotal
+},rolls);
+
+}
+
+/* History */
+
+function addHistoryLine(data,rollsConfig){
+
+let lineText=data.results.map(r=>{
+
+let modText="";
+if(r.mod>0) modText=`+${r.mod}`;
+if(r.mod<0) modText=`${r.mod}`;
+
+return `${r.dice}${modText}: [${r.rolls.join(", ")}]`;
+
+}).join(" | ");
+
+lineText+=` → Total: ${data.overall_total}`;
+
+history.unshift({text:lineText,rolls:rollsConfig});
+
+saveHistory();
+renderHistoryLine(lineText,rollsConfig);
+
+}
+
+function renderHistoryLine(text,rollsConfig){
+
+const historyDiv=document.getElementById("history");
+
+const div=document.createElement("div");
+div.className="bg-gray-100 dark:bg-slate-700 p-2 rounded shadow cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-600";
+
+div.textContent=text;
+div.onclick=()=>rollDice(rollsConfig);
+
+historyDiv.prepend(div);
+
+}
+
+function saveHistory(){
+localStorage.setItem("diceHistory",JSON.stringify(history));
+}
+
+function clearHistory(){
+history=[];
+saveHistory();
+document.getElementById("history").innerHTML="";
+}
+
+document.addEventListener("keydown",e=>{
+if(e.key==="Enter" && e.target.tagName!=="INPUT" && lastAction){
+lastAction();
+}
+});
+
+history.forEach(h=>renderHistoryLine(h.text,h.rolls));
+
+function toggleAdvantage(){
+advantage=!advantage;
+if(advantage)disadvantage=false;
+updateAdvButtons();
+}
+
+function toggleDisadvantage(){
+disadvantage=!disadvantage;
+if(disadvantage)advantage=false;
+updateAdvButtons();
+}
+
+function updateAdvButtons(){
+const advBtn=document.getElementById("advBtn");
+const disBtn=document.getElementById("disBtn");
+
+advBtn.classList.toggle("ring-4",advantage);
+disBtn.classList.toggle("ring-4",disadvantage);
+}
+</script>
+
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+function toggleDarkMode(){
+
+const root=document.documentElement;
+
+if(root.classList.contains("dark")){
+root.classList.remove("dark");
+localStorage.setItem("theme","light");
+}else{
+root.classList.add("dark");
+localStorage.setItem("theme","dark");
+}
+
+}
+</script>
+
+</body>
+</html>
+
+
+

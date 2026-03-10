@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Skill Check Difficulty</title>
+
+<!-- Apply theme immediately to prevent flash -->
+<script>
+(function(){
+    const theme = localStorage.getItem("theme");
+    if(theme === "dark"){
+        document.documentElement.classList.add("dark");
+    }
+})();
+</script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+tailwind.config = {
+    darkMode: 'class'
+}
+</script>
+</head>
+
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen p-6 transition-colors duration-300">
+<!-- WEBSITE VERSION -->
+<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    Version 1.0.0-beta
+</div>
+<h1 class="text-3xl font-bold text-center mb-8">
+Skill Check Difficulty
+</h1>
+
+<div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-8">
+
+<div class="bg-white dark:bg-slate-800 shadow-lg rounded-xl p-6 space-y-6 transition-colors">
+
+<div class="grid grid-cols-2 gap-4">
+
+<div>
+<label class="font-semibold">Modifier</label>
+<input id="mod" type="number" value="3"
+class="w-full border dark:border-slate-600 rounded p-2 mt-1 bg-white dark:bg-slate-700">
+</div>
+
+<div>
+<label class="font-semibold">Roll Mode</label>
+<select id="adv"
+class="w-full border dark:border-slate-600 rounded p-2 mt-1 bg-white dark:bg-slate-700">
+<option value="0">Normal</option>
+<option value="1">Advantage</option>
+<option value="2">Disadvantage</option>
+</select>
+</div>
+
+<div class="flex items-center gap-2 mt-4 col-span-2">
+<input type="checkbox" id="autos">
+<label class="font-semibold">Nat1 Fail / Nat20 Success</label>
+</div>
+
+</div>
+
+<div>
+
+<label class="font-semibold">Probability</label>
+
+<div class="flex items-center gap-3">
+
+<input id="probSlider" type="range" min="0" max="100" value="50" class="w-full">
+
+<span id="probLabel" class="font-bold w-16 text-right">50%</span>
+
+</div>
+
+</div>
+
+<div>
+
+<label class="font-semibold">Difficulty Class</label>
+
+<div class="flex items-center gap-3">
+
+<input id="dcSlider" type="range" min="5" max="30" value="15" class="w-full">
+
+<span id="dcLabel" class="font-bold w-12 text-right">15</span>
+
+</div>
+
+</div>
+
+<div id="results"
+class="bg-slate-50 dark:bg-slate-700 rounded p-4 text-center text-lg transition-colors">
+Result appears here
+</div>
+
+<div class="flex justify-center pt-2">
+<button onclick="goToMenu()"
+class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+Back to Menu
+</button>
+</div>
+
+</div>
+
+<div class="bg-white dark:bg-slate-800 shadow-lg rounded-xl p-6 transition-colors">
+
+<h2 class="text-xl font-bold mb-4">
+Probability Curve
+</h2>
+
+<canvas id="probChart"></canvas>
+
+</div>
+
+</div>
+
+
+<script>
+
+function getDifficulty(prob){
+
+if(prob<=5) return ["Impossible","text-red-800"]
+if(prob<=20) return ["Very Hard","text-red-600"]
+if(prob<=40) return ["Hard","text-orange-600"]
+if(prob<=60) return ["Medium","text-yellow-600"]
+if(prob<=80) return ["Easy","text-green-600"]
+
+return ["Very Easy","text-emerald-600"]
+
+}
+
+function singleRollSuccess(roll,dc,mod,auto){
+
+if(auto){
+if(roll==1) return false
+if(roll==20) return true
+}
+
+return roll+mod>=dc
+
+}
+
+function probability(dc,mod,mode,auto){
+
+let success=0
+let total=0
+
+if(mode==0){
+
+for(let r=1;r<=20;r++){
+total++
+if(singleRollSuccess(r,dc,mod,auto)) success++
+}
+
+}
+
+if(mode==1){
+
+for(let r1=1;r1<=20;r1++)
+for(let r2=1;r2<=20;r2++){
+
+total++
+let best=Math.max(r1,r2)
+
+if(singleRollSuccess(best,dc,mod,auto)) success++
+
+}
+
+}
+
+if(mode==2){
+
+for(let r1=1;r1<=20;r1++)
+for(let r2=1;r2<=20;r2++){
+
+total++
+let worst=Math.min(r1,r2)
+
+if(singleRollSuccess(worst,dc,mod,auto)) success++
+
+}
+
+}
+
+return success/total
+
+}
+
+function solveDC(target,mod,mode,auto){
+
+let bestDC=1
+let bestDiff=1
+
+for(let dc=1;dc<=30;dc++){
+
+let p=probability(dc,mod,mode,auto)
+
+let diff=Math.abs(p-target)
+
+if(diff<bestDiff){
+bestDiff=diff
+bestDC=dc
+}
+
+}
+
+return bestDC
+
+}
+
+const gradientPlugin={
+id:'difficultyGradient',
+
+beforeDraw(chart){
+
+const {ctx,chartArea}=chart
+if(!chartArea) return
+
+const {top,bottom,left,right}=chartArea
+
+const gradient=ctx.createLinearGradient(0,bottom,0,top)
+
+gradient.addColorStop(0,"#7f1d1d")
+gradient.addColorStop(.1,"#dc2626")
+gradient.addColorStop(.3,"#ea580c")
+gradient.addColorStop(.5,"#eab308")
+gradient.addColorStop(.75,"#4ade80")
+gradient.addColorStop(1,"#16a34a")
+
+ctx.save()
+ctx.fillStyle=gradient
+ctx.fillRect(left,top,right-left,bottom-top)
+ctx.restore()
+
+}
+
+}
+
+const dcLinePlugin={
+id:'dcLine',
+
+afterDraw(chart,args,opts){
+
+const {ctx,chartArea:{top,bottom},scales:{x}}=chart
+
+const xPos=x.getPixelForValue(opts.dc - 5)
+
+ctx.save()
+ctx.strokeStyle="black"
+ctx.setLineDash([6,6])
+ctx.lineWidth=2
+
+ctx.beginPath()
+ctx.moveTo(xPos,top)
+ctx.lineTo(xPos,bottom)
+ctx.stroke()
+
+ctx.restore()
+
+}
+
+}
+
+let chart
+
+function initChart(){
+
+chart=new Chart(probChart,{
+type:"line",
+data:{
+labels:[],
+datasets:[
+{label:"Advantage",borderColor:"green",data:[],tension:.3},
+{label:"Normal",borderColor:"blue",data:[],tension:.3},
+{label:"Disadvantage",borderColor:"red",data:[],tension:.3}
+]
+},
+options:{
+responsive:true,
+animation:{duration:600},
+plugins:{dcLine:{dc:15}},
+scales:{
+y:{min:0,max:100,title:{display:true,text:"Success %"}},
+x:{title:{display:true,text:"Difficulty Class"}}
+}
+},
+plugins:[gradientPlugin,dcLinePlugin]
+})
+
+}
+
+function updateGraph(dc){
+
+const mod=parseInt(modInput.value)
+const auto=autoInput.checked
+
+let labels=[]
+let normal=[]
+let adv=[]
+let dis=[]
+
+for(let i=5;i<=30;i++){
+
+labels.push(i)
+
+normal.push(probability(i,mod,0,auto)*100)
+adv.push(probability(i,mod,1,auto)*100)
+dis.push(probability(i,mod,2,auto)*100)
+
+}
+
+chart.data.labels=labels
+chart.data.datasets[0].data=adv
+chart.data.datasets[1].data=normal
+chart.data.datasets[2].data=dis
+
+chart.options.plugins.dcLine.dc=dc
+
+chart.update()
+
+}
+
+function renderResult(prob,dc){
+
+const percent=(prob*100).toFixed(2)
+
+const [name,color]=getDifficulty(percent)
+
+results.innerHTML=
+`<div class="text-2xl font-bold ${color}">${percent}%</div>
+<div class="font-semibold ${color}">${name}</div>
+<div class="text-gray-600 dark:text-gray-300">DC ${dc}</div>`
+
+}
+
+function updateFromDC(){
+
+const mod=parseInt(modInput.value)
+const rollMode=parseInt(advInput.value)
+const auto=autoInput.checked
+const dc=parseFloat(dcSlider.value)
+
+const prob=probability(dc,mod,rollMode,auto)
+
+probSlider.value=Math.round(prob*100)
+
+probLabel.innerText=Math.round(prob*100)+"%"
+dcLabel.innerText=dc
+
+renderResult(prob,dc)
+
+updateGraph(dc)
+
+}
+
+function updateFromProbability(){
+
+const mod=parseInt(modInput.value)
+const rollMode=parseInt(advInput.value)
+const auto=autoInput.checked
+
+const target=probSlider.value/100
+
+const dc=solveDC(target,mod,rollMode,auto)
+
+dcSlider.value=dc
+
+probLabel.innerText=probSlider.value+"%"
+dcLabel.innerText=dc
+
+renderResult(target,dc)
+
+updateGraph(dc)
+
+}
+
+function goToMenu(){
+window.location.href="/"
+}
+
+const modInput=document.getElementById("mod")
+const advInput=document.getElementById("adv")
+const autoInput=document.getElementById("autos")
+
+const probSlider=document.getElementById("probSlider")
+const dcSlider=document.getElementById("dcSlider")
+
+const probLabel=document.getElementById("probLabel")
+const dcLabel=document.getElementById("dcLabel")
+
+const results=document.getElementById("results")
+const probChart=document.getElementById("probChart")
+
+probSlider.oninput=updateFromProbability
+dcSlider.oninput=updateFromDC
+
+modInput.oninput=updateFromDC
+advInput.onchange=updateFromDC
+autoInput.onchange=updateFromDC
+
+initChart()
+updateFromDC()
+
+</script>
+
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+function toggleDarkMode(){
+
+const root=document.documentElement
+
+if(root.classList.contains("dark")){
+root.classList.remove("dark")
+localStorage.setItem("theme","light")
+}else{
+root.classList.add("dark")
+localStorage.setItem("theme","dark")
+}
+
+}
+</script>
+
+</body>
+</html>
+
