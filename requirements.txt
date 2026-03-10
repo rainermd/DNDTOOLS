@@ -1,3 +1,9 @@
 fastapi
 uvicorn[standard]
 jinja2
+numpy
+random
+FastAPI
+BaseModel
+List
+os
