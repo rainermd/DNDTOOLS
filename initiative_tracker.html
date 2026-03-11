@@ -76,10 +76,44 @@ tailwind.config = {
 
 
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
-<!-- WEBSITE VERSION -->
-<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
-    Version 1.0.0-beta
+<!-- WEBSITE VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    <span>Version 1.0.0-beta</span>
+    <span>|</span>
+    <a id="bugReportLink"
+       href="#"
+       class="flex items-center gap-1 underline hover:text-blue-500">
+        🐞 Submit a bug report
+    </a>
 </div>
+
+<script>
+document.getElementById("bugReportLink").addEventListener("click", function() {
+    const version = "1.0.0-beta";
+    const page = window.location.href;
+
+    const subject = encodeURIComponent("D&D Simulator Bug Report");
+    const body = encodeURIComponent(
+        `Version: ${version}
+Page: ${page}
+
+Describe the bug:
+-----------------
+
+Steps to reproduce:
+-----------------
+
+Expected result:
+-----------------
+
+Actual result:
+-----------------
+`
+    );
+
+    window.location.href = `mailto:my.email@gmail.com?subject=${subject}&body=${body}`;
+});
+</script>
 <h1 class="text-3xl font-bold mb-4">🎲 Initiative Tracker</h1>
 
 <div class="text-lg font-semibold mb-6">
@@ -187,7 +221,10 @@ ac:"",
 notes:"",
 color:"#e5e7eb",
 conditions:[],
-resources:[]
+resources:[],
+state:"alive",
+deathFails:0,
+deathSuccess:0
 })
 saveState()
 render()
@@ -348,9 +385,69 @@ oninput="update(${c.id},'name',this.value)">
 </td>
 
 <td class="text-center">
-<input value="${c.hp}" class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+
+${c.state==="dead" ? `
+<span class="text-red-600 font-bold cursor-pointer"
+onclick="revive(${c.id})">DEAD</span>
+` : c.state==="down" ? `
+
+<div class="flex flex-col items-center gap-1">
+
+<span class="text-red-600 font-bold">DOWN</span>
+
+<div class="flex gap-1">
+
+${[0,1,2].map(i=>`
+<div onclick="deathFail(${c.id})"
+class="circle"
+style="background:${i<c.deathFails?'red':''}">
+</div>
+`).join("")}
+
+${[0,1,2].map(i=>`
+<div onclick="deathSuccess(${c.id})"
+class="circle"
+style="background:${i<c.deathSuccess?'green':''}">
+</div>
+`).join("")}
+
+</div>
+
+</div>
+
+` : `
+
+<div class="flex flex-col items-center gap-1">
+
+<input value="${c.hp}" id="hp_${c.id}"
+class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="update(${c.id},'hp',this.value)">
+
+<details class="text-xs">
+<summary class="cursor-pointer select-none">±</summary>
+
+<div class="flex gap-1 mt-1">
+
+<select id="hpSign_${c.id}" class="border rounded">
+<option value="+">+</option>
+<option value="-">-</option>
+</select>
+
+<input type="number" min="0" id="hpChange_${c.id}"
+class="border rounded w-12 text-center"
+placeholder="0">
+
+<button onclick="applyHP(${c.id})"
+class="bg-gray-300 px-1 rounded">✔</button>
+
+</div>
+</details>
+
+</div>
+
+`}
+
 </td>
 
 <td class="text-center">
@@ -538,6 +635,110 @@ localStorage.setItem("theme","dark")
 }
 function goToMenu(){
 window.location.href="/"
+}
+function applyHP(id){
+
+const hpInput=document.getElementById("hp_"+id)
+const sign=document.getElementById("hpSign_"+id).value
+const change=parseInt(document.getElementById("hpChange_"+id).value)
+
+if(isNaN(change)) return
+
+let hp=parseInt(hpInput.value)||0
+
+if(sign==="+") hp+=change
+else hp-=change
+
+hpInput.value=hp
+
+update(id,'hp',hp)
+
+}
+function applyHP(id){
+
+const hpInput=document.getElementById("hp_"+id)
+const sign=document.getElementById("hpSign_"+id).value
+const change=parseInt(document.getElementById("hpChange_"+id).value)
+
+if(isNaN(change)) return
+
+let hp=parseInt(hpInput.value)||0
+
+if(sign==="+") hp+=change
+else hp-=change
+
+const c=combatants.find(c=>c.id===id)
+
+c.hp=hp
+
+if(hp<=0 && c.state==="alive"){
+chooseDownOrDead(id)
+}else{
+update(id,'hp',hp)
+}
+
+saveState()
+render()
+}
+function chooseDownOrDead(id){
+
+const choice=prompt("Type 'down' or 'dead'")
+
+const c=combatants.find(c=>c.id===id)
+
+if(choice==="dead"){
+c.state="dead"
+}
+
+if(choice==="down"){
+c.state="down"
+c.deathFails=0
+c.deathSuccess=0
+}
+
+saveState()
+render()
+
+}
+function deathFail(id){
+
+const c=combatants.find(c=>c.id===id)
+
+c.deathFails++
+
+if(c.deathFails>=3){
+c.state="dead"
+}
+
+saveState()
+render()
+
+}
+
+function deathSuccess(id){
+
+const c=combatants.find(c=>c.id===id)
+
+c.deathSuccess++
+
+if(c.deathSuccess>=3){
+c.state="stable"
+}
+
+saveState()
+render()
+
+}
+function revive(id){
+
+const c=combatants.find(c=>c.id===id)
+
+c.state="alive"
+c.hp=1
+
+saveState()
+render()
+
 }
 </script>
 

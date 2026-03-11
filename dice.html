@@ -74,10 +74,44 @@ tailwind.config = {
 
 
 <body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-200 font-sans min-h-screen flex flex-col items-center p-6 transition-colors">
-<!-- WEBSITE VERSION -->
-<div class="fixed bottom-2 left-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
-    Version 1.0.0-beta
+<!-- WEBSITE VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    <span>Version 1.0.0-beta</span>
+    <span>|</span>
+    <a id="bugReportLink"
+       href="#"
+       class="flex items-center gap-1 underline hover:text-blue-500">
+        🐞 Submit a bug report
+    </a>
 </div>
+
+<script>
+document.getElementById("bugReportLink").addEventListener("click", function() {
+    const version = "1.0.0-beta";
+    const page = window.location.href;
+
+    const subject = encodeURIComponent("D&D Simulator Bug Report");
+    const body = encodeURIComponent(
+        `Version: ${version}
+Page: ${page}
+
+Describe the bug:
+-----------------
+
+Steps to reproduce:
+-----------------
+
+Expected result:
+-----------------
+
+Actual result:
+-----------------
+`
+    );
+
+    window.location.href = `mailto:my.email@gmail.com?subject=${subject}&body=${body}`;
+});
+</script>
 <div class="w-full max-w-xl mb-4">
 <a href="/" class="inline-block px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">
 ← Back to Menu
