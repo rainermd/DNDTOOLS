@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wild Magic Surge Roller</title>
+
+<script>
+(function(){
+const theme = localStorage.getItem("theme");
+if(theme === "dark"){
+document.documentElement.classList.add("dark");
+}
+})();
+</script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={darkMode:'class'}
+</script>
+
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
+
+<!-- VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+<span>Version 1.0.0-beta</span>
+<span>|</span>
+<a id="bugReportLink" href="#" class="flex items-center gap-1 underline hover:text-blue-500">
+🐞 Submit a bug report
+</a>
+</div>
+
+<script>
+document.getElementById("bugReportLink").addEventListener("click",function(){
+
+const version="1.0.0-beta"
+const page=window.location.href
+
+const subject=encodeURIComponent("D&D Simulator Bug Report")
+
+const body=encodeURIComponent(
+`Version: ${version}
+Page: ${page}
+
+Describe the bug:
+-----------------
+
+Steps to reproduce:
+-----------------
+
+Expected result:
+-----------------
+
+Actual result:
+-----------------
+`
+)
+
+window.location.href=`mailto:my.email@gmail.com?subject=${subject}&body=${body}`
+
+})
+</script>
+
+<h1 class="text-3xl font-bold mb-6">✨ Wild Magic Surge</h1>
+
+<div class="flex gap-3 mb-6">
+
+<button onclick="rollSurge()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow">
+Roll Wild Magic
+</button>
+
+<button onclick="toggleLibrary()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow">
+View Library
+</button>
+
+</div>
+
+<div class="text-lg font-semibold mb-2">
+d100 Roll: <span id="rollResult">-</span>
+</div>
+
+<div id="surgeResult" class="max-w-xl text-center bg-white dark:bg-slate-800 p-6 rounded shadow text-sm mb-6">
+Press the button to roll on the Wild Magic Surge table.
+</div>
+
+<!-- LIBRARY -->
+<div id="library" class="hidden max-w-4xl w-full bg-white dark:bg-slate-800 p-6 rounded shadow overflow-y-auto max-h-[500px] text-sm"></div>
+
+<!-- BACK BUTTON -->
+<div class="flex justify-center pt-4">
+<button onclick="goToMenu()"
+class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+Back to Menu
+</button>
+</div>
+
+<!-- DARK MODE BUTTON -->
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+
+const SURGE_TABLE=[
+
+{range:[1,2],text:"Roll on this table at the start of each of your turns for the next minute, ignoring this result on subsequent rolls."},
+{range:[3,4],text:"For the next minute, you can see any invisible creature if you have line of sight to it."},
+{range:[5,6],text:"A modron chosen and controlled by the DM appears in an unoccupied space within 5 feet of you."},
+{range:[7,8],text:"You cast Fireball as a 3rd-level spell centered on yourself."},
+{range:[9,10],text:"You cast Magic Missile as a 5th-level spell."},
+{range:[11,12],text:"Roll a d10. Your height changes by that many inches."},
+{range:[13,14],text:"You cast Confusion centered on yourself."},
+{range:[15,16],text:"For the next minute, you regain 5 hit points at the start of each of your turns."},
+{range:[17,18],text:"You grow a long beard made of feathers that remains until you sneeze."},
+{range:[19,20],text:"You cast Grease centered on yourself."},
+{range:[21,22],text:"Creatures within 30 feet take 1d10 necrotic damage. You regain hit points equal to the total damage dealt."},
+{range:[23,24],text:"You teleport up to 60 feet to an unoccupied space you can see."},
+{range:[25,26],text:"You are frightened by the nearest creature until the end of your next turn."},
+{range:[27,28],text:"Each creature within 30 feet becomes invisible for the next minute."},
+{range:[29,30],text:"You gain resistance to all damage for the next minute."},
+{range:[31,32],text:"A unicorn controlled by the DM appears in a space within 5 feet of you."},
+{range:[33,34],text:"You can't speak for the next minute. Pink bubbles float out of your mouth whenever you try."},
+{range:[35,36],text:"A spectral shield hovers near you for the next minute, granting +2 AC and immunity to Magic Missile."},
+{range:[37,38],text:"You are immune to being intoxicated by alcohol for the next 5d6 days."},
+{range:[39,40],text:"Your hair falls out but grows back within 24 hours."},
+{range:[41,42],text:"You turn into a potted plant until the start of your next turn."},
+{range:[43,44],text:"For the next minute, you can teleport up to 20 feet as a bonus action on each of your turns."},
+{range:[45,46],text:"You cast Levitate on yourself."},
+{range:[47,48],text:"A unicorn controlled by the DM appears in a space within 5 feet of you."},
+{range:[49,50],text:"You can't speak for the next minute. Pink bubbles float out of your mouth whenever you try."},
+{range:[51,52],text:"A spectral shield hovers near you for the next minute granting +2 AC and immunity to Magic Missile."},
+{range:[53,54],text:"You are immune to alcohol for the next 5d6 days."},
+{range:[55,56],text:"Your hair falls out but grows back within 24 hours."},
+{range:[57,58],text:"You turn into a potted plant until the start of your next turn."},
+{range:[59,60],text:"For the next minute, you can teleport up to 20 feet as a bonus action."},
+{range:[61,62],text:"You cast Levitate on yourself."},
+{range:[63,64],text:"A random creature within 60 feet becomes poisoned for 1 hour."},
+{range:[65,66],text:"You glow with bright light in a 30-foot radius for 1 minute."},
+{range:[67,68],text:"You cast Mirror Image."},
+{range:[69,70],text:"You cast Fly on a random creature within 60 feet."},
+{range:[71,72],text:"You become invisible for the next minute."},
+{range:[73,74],text:"Maximize the damage of the next damaging spell you cast within the next minute."},
+{range:[75,76],text:"You regain all expended sorcery points."},
+{range:[77,78],text:"For the next minute you must shout when you speak."},
+{range:[79,80],text:"You cast Polymorph on yourself. If you fail the save, you turn into a sheep."},
+{range:[81,82],text:"All creatures within 30 feet take 1d10 lightning damage."},
+{range:[83,84],text:"You cast Fog Cloud centered on yourself."},
+{range:[85,86],text:"You regain 2d10 hit points."},
+{range:[87,88],text:"You turn bright blue for 1d10 minutes."},
+{range:[89,90],text:"You grow an extra finger which disappears in 1 hour."},
+{range:[91,92],text:"You swap places with a random creature within 60 feet."},
+{range:[93,94],text:"You gain the ability to fly for 1 minute."},
+{range:[95,96],text:"You become vulnerable to piercing damage for 1 minute."},
+{range:[97,98],text:"You cast Blink."},
+{range:[99,100],text:"You shrink 1d6 inches."}
+
+]
+
+function rollSurge(){
+
+const roll=Math.floor(Math.random()*100)+1
+
+document.getElementById("rollResult").innerText=roll
+
+const result=SURGE_TABLE.find(r=>roll>=r.range[0] && roll<=r.range[1])
+
+document.getElementById("surgeResult").innerText=result.text
+
+}
+
+function toggleLibrary(){
+
+const lib=document.getElementById("library")
+
+if(lib.classList.contains("hidden")){
+
+lib.classList.remove("hidden")
+
+lib.innerHTML=SURGE_TABLE.map(r=>`
+<div class="border-b py-2">
+<span class="font-bold">${r.range[0]}–${r.range[1]}</span> — ${r.text}
+</div>
+`).join("")
+
+}else{
+
+lib.classList.add("hidden")
+
+}
+
+}
+
+function toggleDarkMode(){
+
+const root=document.documentElement
+
+if(root.classList.contains("dark")){
+root.classList.remove("dark")
+localStorage.setItem("theme","light")
+}else{
+root.classList.add("dark")
+localStorage.setItem("theme","dark")
+}
+
+}
+
+function goToMenu(){
+window.location.href="/"
+}
+
+</script>
+
+</body>
+</html>

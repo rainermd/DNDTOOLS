@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deck of Many Things</title>
+
+<!-- Immediately apply theme to prevent flash -->
+<script>
+(function(){
+    const theme = localStorage.getItem("theme");
+    if(theme === "dark"){
+        document.documentElement.classList.add("dark");
+    }
+})();
+</script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    darkMode: 'class'
+}
+</script>
+
+<style>
+.card {
+    width: 120px;
+    height: 180px;
+    perspective: 1000px;
+    cursor: pointer;
+}
+.cardInner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+.card.flipped .cardInner {
+    transform: rotateY(180deg);
+}
+.cardFront, .cardBack {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5rem;
+    backface-visibility: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+}
+.cardFront {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 2px solid #b45309;
+}
+.dark .cardFront {
+    background-color: #78350f;
+    color: #fde68a;
+    border-color: #fde68a;
+}
+.cardBack {
+    background-color: #1e293b;
+    color: white;
+    transform: rotateY(180deg);
+}
+.cardContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+</style>
+
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
+
+<!-- WEBSITE VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    <span>Version 1.0.0-beta</span>
+    <span>|</span>
+    <a id="bugReportLink" href="#" class="flex items-center gap-1 underline hover:text-blue-500">
+        🐞 Submit a bug report
+    </a>
+</div>
+
+<script>
+document.getElementById("bugReportLink").addEventListener("click", function() {
+    const version = "1.0.0-beta";
+    const page = window.location.href;
+    const subject = encodeURIComponent("Deck of Many Things Bug Report");
+    const body = encodeURIComponent(
+        `Version: ${version}\nPage: ${page}\n\nDescribe the bug:\n-----------------\n\nSteps to reproduce:\n-----------------\n\nExpected result:\n-----------------\n\nActual result:\n-----------------`
+    );
+    window.location.href = `mailto:my.email@gmail.com?subject=${subject}&body=${body}`;
+});
+</script>
+
+<h1 class="text-3xl font-bold mb-6">🃏 Deck of Many Things</h1>
+
+<div class="flex flex-col items-center gap-4 w-full max-w-xl">
+
+<!-- Deck mode toggle -->
+<div class="flex gap-3 mb-4">
+    <label class="flex items-center gap-2">
+        <input type="radio" name="deckMode" value="simple" checked onchange="setDeckMode(this.value)">
+        Simple (13 Cards)
+    </label>
+    <label class="flex items-center gap-2">
+        <input type="radio" name="deckMode" value="extended" onchange="setDeckMode(this.value)">
+        Extended (22 Cards)
+    </label>
+</div>
+
+<!-- Draw controls -->
+<div class="flex gap-3 mb-4 flex-wrap justify-center">
+    <input id="drawCount" type="number" min="1" placeholder="Number of cards" class="border rounded px-2 py-1 w-32 bg-white dark:bg-slate-700 dark:border-slate-600 text-center">
+    <button onclick="drawCards()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">Draw</button>
+    <button onclick="clearCards()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow">Clear</button>
+    <button onclick="toggleLibrary()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">Library</button>
+</div>
+
+<!-- Card display -->
+<div id="cardContainer" class="cardContainer"></div>
+
+<!-- Library -->
+<div id="library" class="hidden mt-6 w-full max-w-xl bg-white dark:bg-slate-800 p-4 rounded shadow overflow-y-auto max-h-96">
+    <h2 class="text-xl font-bold mb-2">Deck Library</h2>
+    <ul id="libraryList" class="list-disc pl-5 text-sm"></ul>
+</div>
+
+</div>
+
+<div class="flex justify-center pt-6">
+    <button onclick="goToMenu()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+        Back to Menu
+    </button>
+</div>
+
+<button onclick="toggleDarkMode()" class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+// Dark mode toggle
+function toggleDarkMode(){
+    const root = document.documentElement;
+    if(root.classList.contains("dark")){
+        root.classList.remove("dark");
+        localStorage.setItem("theme","light");
+    } else {
+        root.classList.add("dark");
+        localStorage.setItem("theme","dark");
+    }
+}
+
+// Go back to menu
+function goToMenu(){
+    window.location.href="/";
+}
+
+// Deck setup
+let deckMode = "simple";
+let deck = [];
+let drawnCards = [];
+
+const simpleDeck = [
+    {name:"The Fates", effect:"Reality is altered as you desire."},
+    {name:"The Flames", effect:"A powerful fire ignites nearby."},
+    {name:"The Fool", effect:"Lose all wealth and/or benefits."},
+    {name:"The Gem", effect:"Gain rare gems or wealth."},
+    {name:"The Idiot", effect:"Lose intelligence temporarily."},
+    {name:"The Jester", effect:"Gain extra experience points."},
+    {name:"The Key", effect:"Gain a rare artifact."},
+    {name:"The Knight", effect:"Gain a loyal warrior ally."},
+    {name:"The Moon", effect:"You may cast spells freely for a time."},
+    {name:"The Rogue", effect:"An enemy betrays you or aid comes."},
+    {name:"The Ruin", effect:"Lose all possessions."},
+    {name:"The Sun", effect:"Gain great fortune and benefits."},
+    {name:"The Vizier", effect:"Ask any one question and receive truthful answer."}
+];
+
+const extendedDeck = [
+    ...simpleDeck,
+    {name:"The Donjon", effect:"You are imprisoned."},
+    {name:"The Euryale", effect:"Curse reduces saving throws."},
+    {name:"The Skull", effect:"Defeat in battle; instant death possible."},
+    {name:"The Star", effect:"Increase one ability score by 2."},
+    {name:"The Comet", effect:"Next combat you win grants level up."},
+    {name:"The Throne", effect:"Gain a title and property."},
+    {name:"The Fool (Extra)", effect:"Lose wealth again."},
+    {name:"The Knight (Extra)", effect:"Another loyal warrior ally."},
+    {name:"The Sun (Extra)", effect:"Another great fortune."},
+    {name:"The Moon (Extra)", effect:"Extra spell casting."},
+    {name:"The Vizier (Extra)", effect:"Another question answered."},
+    {name:"The Key (Extra)", effect:"Another rare artifact."},
+    {name:"The Gem (Extra)", effect:"Additional gems or wealth."},
+    {name:"The Rogue (Extra)", effect:"Unexpected aid or betrayal."},
+    {name:"The Ruin (Extra)", effect:"Additional loss of possessions."},
+    {name:"The Fates (Extra)", effect:"Reality alters again."},
+    {name:"The Flames (Extra)", effect:"Extra fire chaos."},
+    {name:"The Euryale (Extra 2)", effect:"Another curse reducing saving throws."},
+];
+
+// Switch deck mode
+function setDeckMode(mode){
+    deckMode = mode;
+    deck = mode === "simple" ? [...simpleDeck] : [...extendedDeck];
+    clearCards();
+}
+
+// Draw cards with proper limit
+function drawCards(){
+    const input = document.getElementById("drawCount");
+    let count = parseInt(input.value);
+    if(isNaN(count) || count < 1) return;
+    
+    const maxCards = deck.length;
+    if(count > maxCards) count = maxCards; // enforce max
+    input.value = count; // update input
+    
+    clearCards();
+    drawnCards = [];
+    const tempDeck = [...deck];
+    
+    for(let i = 0; i < count; i++){
+        const idx = Math.floor(Math.random() * tempDeck.length);
+        const card = tempDeck.splice(idx, 1)[0];
+        drawnCards.push(card);
+    }
+    renderCards();
+}
+
+// Render cards face-down initially
+function renderCards(){
+    const container = document.getElementById("cardContainer");
+    container.innerHTML = "";
+    drawnCards.forEach((card,index)=>{
+        const cardDiv = document.createElement("div");
+        cardDiv.className = "card"; // no flipped class initially
+        cardDiv.classList.toggle("flipped")
+        cardDiv.onclick = () => cardDiv.classList.toggle("flipped");
+        cardDiv.innerHTML = `
+            <div class="cardInner">
+                <div class="cardBack">Card ${index+1}</div>
+                <div class="cardFront">${card.name}<br><span class="text-xs">${card.effect}</span></div>
+            </div>
+        `;
+        container.appendChild(cardDiv);
+    });
+}
+
+// Clear cards
+function clearCards(){
+    drawnCards = [];
+    document.getElementById("cardContainer").innerHTML = "";
+}
+
+// Toggle library
+function toggleLibrary(){
+    const lib = document.getElementById("library");
+    lib.classList.toggle("hidden");
+    const list = document.getElementById("libraryList");
+    list.innerHTML = "";
+    const sourceDeck = deckMode === "simple" ? simpleDeck : extendedDeck;
+    sourceDeck.forEach(c=>{
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="font-semibold">${c.name}</span>: ${c.effect}`;
+        list.appendChild(li);
+    });
+}
+
+// Initialize deck
+setDeckMode("simple");
+</script>
+
+</body>
+</html>

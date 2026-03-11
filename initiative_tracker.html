@@ -219,12 +219,9 @@ name:"Combatant",
 hp:"",
 ac:"",
 notes:"",
-color:"#e5e7eb",
+color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
 conditions:[],
-resources:[],
-state:"alive",
-deathFails:0,
-deathSuccess:0
+resources:[]
 })
 saveState()
 render()
@@ -384,69 +381,13 @@ onmousedown="event.stopPropagation()"
 oninput="update(${c.id},'name',this.value)">
 </td>
 
-<td class="text-center">
+<td class="text-center relative">
 
-${c.state==="dead" ? `
-<span class="text-red-600 font-bold cursor-pointer"
-onclick="revive(${c.id})">DEAD</span>
-` : c.state==="down" ? `
-
-<div class="flex flex-col items-center gap-1">
-
-<span class="text-red-600 font-bold">DOWN</span>
-
-<div class="flex gap-1">
-
-${[0,1,2].map(i=>`
-<div onclick="deathFail(${c.id})"
-class="circle"
-style="background:${i<c.deathFails?'red':''}">
-</div>
-`).join("")}
-
-${[0,1,2].map(i=>`
-<div onclick="deathSuccess(${c.id})"
-class="circle"
-style="background:${i<c.deathSuccess?'green':''}">
-</div>
-`).join("")}
-
-</div>
-
-</div>
-
-` : `
-
-<div class="flex flex-col items-center gap-1">
-
-<input value="${c.hp}" id="hp_${c.id}"
+<input value="${c.hp}" 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
+onclick="openHPEdit(${c.id},this)"
 oninput="update(${c.id},'hp',this.value)">
-
-<details class="text-xs">
-<summary class="cursor-pointer select-none">±</summary>
-
-<div class="flex gap-1 mt-1">
-
-<select id="hpSign_${c.id}" class="border rounded">
-<option value="+">+</option>
-<option value="-">-</option>
-</select>
-
-<input type="number" min="0" id="hpChange_${c.id}"
-class="border rounded w-12 text-center"
-placeholder="0">
-
-<button onclick="applyHP(${c.id})"
-class="bg-gray-300 px-1 rounded">✔</button>
-
-</div>
-</details>
-
-</div>
-
-`}
 
 </td>
 
@@ -565,28 +506,17 @@ render()
 
 function nextTurn(){
 
-if(combatants.length===0) return
-
-let attempts = 0
-
-do{
+if(combatants.length===0)return
 
 currentTurn++
 
-if(currentTurn >= combatants.length){
-currentTurn = 0
+if(currentTurn>=combatants.length){
+currentTurn=0
 round++
 }
 
-attempts++
-
-if(attempts > combatants.length) break
-
-}while(combatants[currentTurn].state === "dead")
-
 saveState()
 render()
-
 }
 
 function resetEncounter(){
@@ -648,100 +578,82 @@ function goToMenu(){
 window.location.href="/"
 }
 
-function applyHP(id){
+function openHPEdit(id,input){
 
-const hpInput=document.getElementById("hp_"+id)
-const sign=document.getElementById("hpSign_"+id).value
-const change=parseInt(document.getElementById("hpChange_"+id).value)
+event.stopPropagation()
 
-if(isNaN(change)) return
+closeHPEdit()
 
-let hp=parseInt(hpInput.value)||0
+const container=document.createElement("div")
 
-if(sign==="+") hp+=change
-else hp-=change
-if(hp < 0) hp = 0
-const c=combatants.find(c=>c.id===id)
+container.id="hpEditor"
 
-c.hp=hp
+container.className="absolute z-50 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow p-2 flex gap-1 items-center"
 
-if(hp<=0 && c.state==="alive"){
-chooseDownOrDead(id)
-}else{
-update(id,'hp',hp)
-}
+container.onclick=(e)=>e.stopPropagation()
 
-saveState()
-render()
-}
-function chooseDownOrDead(id){
+container.innerHTML=`
 
-const choice = confirm("Click OK for DOWN, Cancel for DEAD")
+<input id="hpAdjustValue" type="number" min="0" value="0"
+class="border rounded w-16 text-center bg-white dark:bg-slate-700 dark:border-slate-600">
 
-if(choice){
-c.state="down"
-c.deathFails=0
-c.deathSuccess=0
-}else{
-c.state="dead"
-}
+<button onclick="adjustHP(${id},1)"
+class="px-2 bg-green-500 text-white rounded">+</button>
 
-const c=combatants.find(c=>c.id===id)
+<button onclick="adjustHP(${id},-1)"
+class="px-2 bg-red-500 text-white rounded">-</button>
 
-if(choice==="dead"){
-c.state="dead"
-}
+`
 
-if(choice==="down"){
-c.state="down"
-c.deathFails=0
-c.deathSuccess=0
-}
+document.body.appendChild(container)
 
-saveState()
-render()
+const rect=input.getBoundingClientRect()
+
+container.style.left=rect.left+"px"
+container.style.top=(rect.bottom+4)+"px"
 
 }
-function deathFail(id){
+
+function adjustHP(id,sign){
+
+const val=parseInt(document.getElementById("hpAdjustValue").value)
+
+if(isNaN(val) || val<0) return
 
 const c=combatants.find(c=>c.id===id)
 
-c.deathFails++
+let current=parseInt(c.hp)||0
 
-if(c.deathFails>=3){
-c.state="dead"
-}
+current += sign * val
+
+c.hp=current
 
 saveState()
 render()
 
 }
 
-function deathSuccess(id){
+function closeHPEdit(){
 
-const c=combatants.find(c=>c.id===id)
+const existing=document.getElementById("hpEditor")
 
-c.deathSuccess++
-
-if(c.deathSuccess>=3){
-c.state="down"
+if(existing){
+existing.remove()
 }
 
-saveState()
-render()
-
 }
-function revive(id){
 
-const c=combatants.find(c=>c.id===id)
+document.addEventListener("click",function(e){
 
-c.state="alive"
-c.hp=1
+const popup=document.getElementById("hpEditor")
 
-saveState()
-render()
+if(!popup) return
 
+if(!popup.contains(e.target)){
+closeHPEdit()
 }
+
+})
 </script>
 
 </body>

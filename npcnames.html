@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NPC Name Generator</title>
+
+<!-- Immediately apply theme to prevent flash -->
+<script>
+(function(){
+    const theme = localStorage.getItem("theme");
+    if(theme === "dark"){
+        document.documentElement.classList.add("dark");
+    }
+})();
+</script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    darkMode: 'class'
+}
+</script>
+
+<style>
+/* Glow effect for generated name */
+.nameGlow {
+    outline: 2px solid rgba(34,197,94,0.8);
+    outline-offset: -1px;
+    animation: pulseName 1.2s infinite alternate;
+}
+
+@keyframes pulseName {
+    from { outline-color: rgba(34,197,94,0.5); }
+    to { outline-color: rgba(34,197,94,1); }
+}
+</style>
+
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
+
+<!-- WEBSITE VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    <span>Version 1.0.0-beta</span>
+    <span>|</span>
+    <a id="bugReportLink"
+       href="#"
+       class="flex items-center gap-1 underline hover:text-blue-500">
+        🐞 Submit a bug report
+    </a>
+</div>
+
+<script>
+document.getElementById("bugReportLink").addEventListener("click", function() {
+    const version = "1.0.0-beta";
+    const page = window.location.href;
+
+    const subject = encodeURIComponent("NPC Name Generator Bug Report");
+    const body = encodeURIComponent(
+        `Version: ${version}
+Page: ${page}
+
+Describe the bug:
+-----------------
+
+Steps to reproduce:
+-----------------
+
+Expected result:
+-----------------
+
+Actual result:
+-----------------
+`
+    );
+
+    window.location.href = `mailto:my.email@gmail.com?subject=${subject}&body=${body}`;
+});
+</script>
+
+<h1 class="text-3xl font-bold mb-6">🧙 NPC Name Generator</h1>
+
+<div class="flex flex-col items-center gap-4">
+
+<!-- Controls -->
+<div class="flex flex-wrap gap-3 justify-center">
+    <input id="nameCount" type="number" min="1" placeholder="Number of names"
+           class="border rounded px-2 py-1 w-28 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+           onmousedown="event.stopPropagation()">
+    <button onclick="generateMultiple()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">Generate Names</button>
+</div>
+
+<!-- Display area -->
+<div id="nameDisplay" class="flex flex-col items-center gap-2 mt-6 w-full max-w-xl">
+</div>
+
+</div>
+
+<div class="flex justify-center pt-6">
+<button onclick="goToMenu()"
+class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+Back to Menu
+</button>
+</div>
+
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+// Dark mode toggle
+function toggleDarkMode(){
+    const root = document.documentElement;
+    if(root.classList.contains("dark")){
+        root.classList.remove("dark")
+        localStorage.setItem("theme","light")
+    } else {
+        root.classList.add("dark")
+        localStorage.setItem("theme","dark")
+    }
+}
+
+// Go back to menu
+function goToMenu(){
+    window.location.href="/"
+}
+
+// Sample NPC name lists
+const firstNames = ["Arin","Bryn","Cael","Dara","Elric","Fiona","Galen","Hilda","Ivar","Jora","Kara","Lorin","Mira","Niko","Orin","Pella","Quin","Rina","Soren","Talia"];
+const lastNames  = ["Amberfall","Brightwood","Coldriver","Dawntracker","Eveningstar","Frostbeard","Glimmerstone","Highcastle","Ironfoot","Jadeeye","Keenblade","Lightbringer","Moonshadow","Nightbreeze","Oakenheart","Proudmoore","Quickwind","Ravencrest","Silverleaf","Thornfield"];
+
+// Generate a single random NPC name
+function generateName(display){
+    const f = firstNames[Math.floor(Math.random()*firstNames.length)];
+    const l = lastNames[Math.floor(Math.random()*lastNames.length)];
+
+    const nameElem = document.createElement("div");
+    nameElem.textContent = `${f} ${l}`;
+    nameElem.className = "p-2 rounded bg-green-100 dark:bg-green-800 text-green-900 dark:text-green-200 w-full text-center nameGlow";
+    display.appendChild(nameElem);
+}
+
+// Generate multiple names
+function generateMultiple(){
+    const display = document.getElementById("nameDisplay");
+    const countInput = document.getElementById("nameCount").value;
+    const count = Math.max(1, parseInt(countInput) || 1);
+
+    // Clear previous names
+    display.innerHTML = "";
+
+    for(let i=0;i<count;i++){
+        generateName(display);
+    }
+}
+</script>
+
+</body>
+</html>

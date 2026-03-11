@@ -68,28 +68,40 @@ Actual result:
     <div class="bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg text-center transition-colors duration-300">
         <h1 class="text-4xl font-bold mb-8 text-gray-800 dark:text-gray-200">D&D Simulator</h1>
 
-        <div class="flex flex-col md:flex-row gap-6 justify-center">
-            <button onclick="window.location.href='/combat'"
-                    class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                Combat Simulator
-            </button>
-            <button onclick="window.location.href='/dice'"
-                    class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                Dice Roller
-            </button>
-            <button onclick="window.location.href='/skillcheck'"
-                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                Skill Check Difficulty
-            </button>
-            <button onclick="window.location.href='/initiative_tracker'" 
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg shadow text-lg">
-                Initiative Tracker
-            </button>  
-            <button onclick="window.location.href='/FAQ'" 
-                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
-                Dev Notes
-            </button>            
-        </div>
+    <div class="flex flex-wrap gap-6 justify-center">
+    <button onclick="window.location.href='/combat'"
+            class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+        Combat Simulator
+    </button>
+    <button onclick="window.location.href='/dice'"
+            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+        Dice Roller
+    </button>
+    <button onclick="window.location.href='/skillcheck'"
+            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        Skill Check Difficulty
+    </button>
+    <button onclick="window.location.href='/initiative_tracker'" 
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg shadow text-lg">
+        Initiative Tracker
+    </button>  
+    <button onclick="window.location.href='/npcnames'" 
+        class="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
+        NPC Name Generator
+    </button> 
+    <button onclick="window.location.href='/domt'" 
+        class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+        Deck of Many Things
+    </button>     
+    <button onclick="window.location.href='/wildmagic'" 
+        class="px-6 py-3 rainbowButton text-white rounded-lg transition-all shadow-lg">
+        Wild Magic Table
+    </button>
+    <button onclick="window.location.href='/FAQ'" 
+        class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+        Dev Notes
+    </button>            
+</div>   
     </div>
 
     <!-- Dark Mode Toggle -->
@@ -111,4 +123,32 @@ Actual result:
         }
     </script>
 </body>
+<style>
+.rainbowButton{
+  background: linear-gradient(
+    90deg,
+    red,
+    orange,
+    #FACC15, /* darker yellow for better contrast */
+    green,
+    blue,
+    indigo,
+    violet,
+    red
+  );
+  background-size: 200% 100%;
+  animation: rainbowMove 4s linear infinite;
+  color: white;
+}
+
+.rainbowButton:hover{
+  filter: brightness(1.15);
+}
+
+@keyframes rainbowMove{
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+</style>
+
 </html>

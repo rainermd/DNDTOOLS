@@ -403,3 +403,15 @@ def initiative_tracker():
 @app.get("/FAQ")
 def FAQ():
     return FileResponse("FAQ.html")  # We'll make this page next
+
+@app.get("/wildmagic")
+def wildmagic():
+    return FileResponse("wildmagic.html")  # We'll make this page next
+
+@app.get("/npcnames")
+def npcnames():
+    return FileResponse("npcnames.html")  # We'll make this page next
+
+@app.get("/domt")
+def domt():
+    return FileResponse("domt.html")  # We'll make this page next
