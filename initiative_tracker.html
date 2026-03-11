@@ -565,17 +565,28 @@ render()
 
 function nextTurn(){
 
-if(combatants.length===0)return
+if(combatants.length===0) return
+
+let attempts = 0
+
+do{
 
 currentTurn++
 
-if(currentTurn>=combatants.length){
-currentTurn=0
+if(currentTurn >= combatants.length){
+currentTurn = 0
 round++
 }
 
+attempts++
+
+if(attempts > combatants.length) break
+
+}while(combatants[currentTurn].state === "dead")
+
 saveState()
 render()
+
 }
 
 function resetEncounter(){
@@ -636,6 +647,7 @@ localStorage.setItem("theme","dark")
 function goToMenu(){
 window.location.href="/"
 }
+
 function applyHP(id){
 
 const hpInput=document.getElementById("hp_"+id)
@@ -648,25 +660,7 @@ let hp=parseInt(hpInput.value)||0
 
 if(sign==="+") hp+=change
 else hp-=change
-
-hpInput.value=hp
-
-update(id,'hp',hp)
-
-}
-function applyHP(id){
-
-const hpInput=document.getElementById("hp_"+id)
-const sign=document.getElementById("hpSign_"+id).value
-const change=parseInt(document.getElementById("hpChange_"+id).value)
-
-if(isNaN(change)) return
-
-let hp=parseInt(hpInput.value)||0
-
-if(sign==="+") hp+=change
-else hp-=change
-
+if(hp < 0) hp = 0
 const c=combatants.find(c=>c.id===id)
 
 c.hp=hp
@@ -682,7 +676,15 @@ render()
 }
 function chooseDownOrDead(id){
 
-const choice=prompt("Type 'down' or 'dead'")
+const choice = confirm("Click OK for DOWN, Cancel for DEAD")
+
+if(choice){
+c.state="down"
+c.deathFails=0
+c.deathSuccess=0
+}else{
+c.state="dead"
+}
 
 const c=combatants.find(c=>c.id===id)
 
@@ -722,7 +724,7 @@ const c=combatants.find(c=>c.id===id)
 c.deathSuccess++
 
 if(c.deathSuccess>=3){
-c.state="stable"
+c.state="down"
 }
 
 saveState()
