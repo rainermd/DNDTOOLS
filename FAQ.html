@@ -28,7 +28,7 @@
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors">
 <!-- WEBSITE VERSION + BUG REPORT -->
 <div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
-    <span>Version 1.0.0-beta</span>
+    <span>Version 1.0.1-beta</span>
     <span>|</span>
     <a id="bugReportLink"
        href="#"
@@ -39,7 +39,7 @@
 
 <script>
 document.getElementById("bugReportLink").addEventListener("click", function() {
-    const version = "1.0.0-beta";
+    const version = "1.0.1-beta";
     const page = window.location.href;
 
     const subject = encodeURIComponent("D&D Simulator Bug Report");
@@ -82,26 +82,26 @@ Actual result:
     - Dungeon Masters can host a combat using the Initiative Tracker!
     - Players can join using a combat code, allowing them to see the initiative themselves and keep track of the order and their own stats
     - DM can hide monsters and monster stats using "fog of war"
+    - Include Death Save features
+    - Include extra conditions (Exhaustion, Bless, etc.)
 4.) NPC Name generator
-    - Include new part that generates names for dungeon masters
     - Can do quick name, or can have inputs to give name more personality
+    - Update name lists
 5.) Wild Magic Surge
-    - Include Wild Magic Surge table and rolling
     - Allow feature for others to add to wild magic table (needs to be approved by me prior to working)
+    - Add VFX
 6.) Deck of Many Things
-    - Include Deck of Many Things drawer
-    - Use both decks, with a toggle to switch
     - Calculate probabilities of good vs. bad outcomes
+    - Add card art
+    - Add better descriptions
+7.) Skill Check DC Calculator
+    - Include different dice (1d100 for Divine Intervention)
 7.) Miscellaneous
     - Speed up simulation times
     - Include tool-tips to help people use the site
     - Include a buy me a Ko-Fi
     - Include links to my other projects
-    - Include ability for people to comment/suggest?
-    - Move from local to web
     - Include special animations for Nat 1 and Nat 20
-    - Include different dice in Skill Check Difficulty (1d100 for Divine Intervention)
-    - Include extra conditions in Initiative Tracker (Exhaustion, Bless, etc.)
     </pre>
 </div>
 
@@ -112,12 +112,9 @@ Actual result:
     <pre class="whitespace-pre-wrap bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 p-3 rounded border dark:border-slate-600">
 1.) Check Player Level and CR scaling with D&D rules
 2.) Color mapping does not work yet for Combat Simulator
-3.) Return error messages after attempting to simulate with no values entered
-4.) Advantage is not defined for other dice types
-5.) Return error message after using multiple dice with adv/disadvantage 
-6.) Fix dice VFX (no black borders, larger size)
-7.) Default color in Initiative Tracker should change depending on Dark/Light mode 
-8.) Health modification on Initiative Tracker does not work
+3.) Advantage is not defined for other dice types
+4.) Return error message after using multiple dice with adv/disadvantage 
+5.) Fix dice VFX (no black borders, larger size)
     </pre>
 </div>
   

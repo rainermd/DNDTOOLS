@@ -28,7 +28,7 @@ tailwind.config = {
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen p-6 transition-colors duration-300">
 <!-- WEBSITE VERSION + BUG REPORT -->
 <div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
-    <span>Version 1.0.0-beta</span>
+    <span>Version 1.0.1-beta</span>
     <span>|</span>
     <a id="bugReportLink"
        href="#"
@@ -307,9 +307,13 @@ type:"line",
 data:{
 labels:[],
 datasets:[
-{label:"Advantage",borderColor:"green",data:[],tension:.3},
-{label:"Normal",borderColor:"blue",data:[],tension:.3},
-{label:"Disadvantage",borderColor:"red",data:[],tension:.3}
+{
+borderColor:"blue",
+data:[],
+tension:.35,
+pointRadius:0,
+fill:false
+}
 ]
 },
 options:{
@@ -330,26 +334,23 @@ function updateGraph(dc){
 
 const mod=parseInt(modInput.value)
 const auto=autoInput.checked
+const rollMode=parseInt(advInput.value)
 
 let labels=[]
-let normal=[]
-let adv=[]
-let dis=[]
+let curve=[]
 
 for(let i=5;i<=30;i++){
 
 labels.push(i)
 
-normal.push(probability(i,mod,0,auto)*100)
-adv.push(probability(i,mod,1,auto)*100)
-dis.push(probability(i,mod,2,auto)*100)
+curve.push(
+probability(i,mod,rollMode,auto)*100
+)
 
 }
 
 chart.data.labels=labels
-chart.data.datasets[0].data=adv
-chart.data.datasets[1].data=normal
-chart.data.datasets[2].data=dis
+chart.data.datasets[0].data=curve
 
 chart.options.plugins.dcLine.dc=dc
 
