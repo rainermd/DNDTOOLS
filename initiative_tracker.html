@@ -519,16 +519,13 @@ render()
 }
 
 function render() {
-
     const table = document.getElementById("combat-table");
     table.innerHTML = "";
 
     document.getElementById("round").innerText = round;
 
     combatants.forEach((c, index) => {
-
         const row = document.createElement("tr");
-
         row.dataset.id = c.id;
         row.style.backgroundColor = c.color;
         row.draggable = true;
@@ -541,53 +538,50 @@ function render() {
             row.classList.add("turnGlow");
         }
 
-        // --- Display values with per-field hide/fog-of-war ---
-        const displayInit   = (!isHost && c.hide?.init) ? "??" : c.init;
-        const displayName   = (!isHost && c.hide?.name) ? "??" : c.name;
-        const displayHP     = (!isHost && c.hide?.hp) ? "??" : c.hp;
-        const displayAC     = (!isHost && c.hide?.ac) ? "??" : c.ac;
         const resourcesHidden = (!isHost && c.hide?.resources);
-
-        const notesDisabled = !isHost && c.locked ? "disabled" : "";
-        const displayNotes  = getNotes(c.id);
+        const displayNotes = getNotes(c.id);
 
         row.innerHTML = `
 <td class="text-center font-bold">${index === currentTurn ? "➤" : ""}</td>
 
+<!-- INIT (no toggle) -->
 <td class="text-center">
-<input type="number" value="${displayInit}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'init',this.value)`}"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
-${isHost ? `<button onclick="toggleHide(${c.id},'init')">${c.hide.init ? '😎' : '👁️'}</button>` : ''}
 </td>
 
+<!-- NAME -->
 <td class="text-center">
-<input value="${displayName}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'name',this.value)`}"
-${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost && c.locked) ? 'disabled' : ''}
+oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'name',this.value) }`}">
 ${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
 </td>
 
+<!-- HP -->
 <td class="text-center relative">
-<input value="${displayHP}" 
+<input value="${c.hp}" 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
-oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'hp',this.value)`}"
-${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost && c.locked) ? 'disabled' : ''}
+oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'hp',this.value) }`}">
 ${isHost ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
 </td>
 
+<!-- AC -->
 <td class="text-center">
-<input value="${displayAC}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'ac',this.value)`}"
-${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost && c.locked) ? 'disabled' : ''}
+oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'ac',this.value) }`}">
 ${isHost ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
 </td>
 
+<!-- RESOURCES -->
 <td class="text-xs">
 ${!resourcesHidden ? c.resources.map((r, rid) => `
 <div class="resourceRow">
@@ -595,7 +589,7 @@ ${!resourcesHidden ? c.resources.map((r, rid) => `
 <button onclick="${(!isHost && c.locked) ? '' : `deleteResource(${c.id},${rid})`}"
 class="text-red-600 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
 ${r.used.map((u, i) => `
-<div onclick="${(!isHost && c.locked) ? '' : `toggleCircle(${c.id},${rid},${i})`}"
+<div onclick="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ toggleCircle(${c.id},${rid},${i}) }`}"
 class="circle ${u ? "filled" : ""}"></div>
 `).join("")}
 </div>
@@ -613,6 +607,7 @@ ${isHost ? `<button onclick="toggleHide(${c.id},'resources')">${c.hide.resources
 </div>
 </td>
 
+<!-- CONDITIONS -->
 <td class="text-center">
 <div class="flex flex-wrap gap-1 justify-center">
 ${c.conditions.map(cond => `
@@ -629,20 +624,22 @@ ${CONDITIONS.map(c => `<option>${c}</option>`).join("")}
 </select>
 </td>
 
+<!-- NOTES (no toggle) -->
 <td class="p-1">
 <textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="updateNotes(${c.id}, this.value)"
 >${displayNotes}</textarea>
-${isHost ? `<button onclick="toggleHide(${c.id},'notes')">${c.hide.notes ? '😎' : '👁️'}</button>` : ''}
 </td>
 
+<!-- COLOR -->
 <td class="text-center">
 <input type="color" value="${c.color}"
 onmousedown="event.stopPropagation()"
 oninput="${(!isHost && c.locked) ? '' : `updateColor(${c.id},this.value,this)`}" ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
+<!-- ACTIONS -->
 <td class="text-center space-x-1">
 <button onclick="${(!isHost && c.locked) ? '' : `duplicateCombatant(${c.id})`}"
 class="bg-green-200 px-1 rounded text-green-800 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✔</button>
@@ -653,14 +650,11 @@ class="bg-red-200 px-1 rounded text-red-800 font-bold" ${(!isHost && c.locked) ?
 ${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.locked ? '🔒' : '🔓'}</button>` : ''}
 
 ${isHost ? `<button onclick="toggleFog(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.fogOfWar ? 'Reveal' : 'Hide'}</button>` : ''}
-
 </td>
 `;
 
         table.appendChild(row);
-
     });
-
 }
 
 function rollInitiative(){
@@ -777,40 +771,28 @@ function goToMenu(){
 window.location.href="."
 }
 
-function openHPEdit(id,input){
+function openHPEdit(id, input){
+    event.stopPropagation();
+    closeHPEdit();
 
-event.stopPropagation()
+    const container=document.createElement("div");
+    container.id="hpEditor";
+    container.className="absolute z-50 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow p-2 flex gap-1 items-center";
+    container.onclick=(e)=>e.stopPropagation();
 
-closeHPEdit()
-
-const container=document.createElement("div")
-
-container.id="hpEditor"
-
-container.className="absolute z-50 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow p-2 flex gap-1 items-center"
-
-container.onclick=(e)=>e.stopPropagation()
-
-container.innerHTML=`
-
+    container.innerHTML=`
 <input id="hpAdjustValue" type="number" min="0" value="0"
 class="border rounded w-16 text-center bg-white dark:bg-slate-700 dark:border-slate-600">
-
 <button onclick="adjustHP(${id},1)"
 class="px-2 bg-green-500 text-white rounded">+</button>
-
 <button onclick="adjustHP(${id},-1)"
 class="px-2 bg-red-500 text-white rounded">-</button>
+`;
 
-`
-
-document.body.appendChild(container)
-
-const rect=input.getBoundingClientRect()
-
-container.style.left=rect.left+"px"
-container.style.top=(rect.bottom+4)+"px"
-
+    document.body.appendChild(container);
+    const rect=input.getBoundingClientRect();
+    container.style.left=rect.left+"px";
+    container.style.top=(rect.bottom+4)+"px";
 }
 
 function adjustHP(id,sign){
