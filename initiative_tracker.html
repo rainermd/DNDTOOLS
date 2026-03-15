@@ -297,27 +297,24 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
 async function createRoom() {
-    // Generate a room code
     roomId = generateRoom();
 
-    // Create the room in Firestore
     await firebaseSetDoc(
         firebaseDoc(firebaseDB, "rooms", roomId),
         {
             round: 1,
             currentTurn: 0,
-            hostId: userId // current user becomes host
+            hostId: userId
         }
     );
 
-    // Set local host state immediately
+    // Immediately mark as host
     isHost = true;
     hostId = userId;
 
-    // Update UI without reloading
     document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
 
-    // ✅ Start listening to room state
+    // Start listening to state changes
     loadState();
 }
 
@@ -367,33 +364,31 @@ const CONDITIONS=[
 "Stunned","Unconscious","Concentrating"
 ]
 
-function loadState(){
-    if(!roomId) return;
+function loadState() {
+    if (!roomId) return;
 
-    // room state
-    firebaseOnSnapshot(
-        firebaseDoc(firebaseDB,"rooms",roomId),
-        (snapshot)=>{
-            if(!snapshot.exists()) return;
-            const data=snapshot.data();
-            currentTurn=data.currentTurn || 0;
-            round=data.round || 1;
-            render();
-        }
-    );
+    // Listen to room info (host + round + turn)
+    firebaseOnSnapshot(firebaseDoc(firebaseDB, "rooms", roomId), (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        currentTurn = data.currentTurn || 0;
+        round = data.round || 1;
 
-    // combatants collection
-    firebaseOnSnapshot(
-        firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
-        (snapshot)=>{
-            combatants=[];
-            snapshot.forEach(doc=>{
-                combatants.push({id:doc.id,...doc.data()});
-            });
-            render();
-        }
-    );
+        // Update host detection
+        hostId = data.hostId;
+        isHost = (hostId === userId);
+
+        render();
+    });
+
+    // Listen to combatants
+    firebaseOnSnapshot(firebaseCollection(firebaseDB, "rooms", roomId, "combatants"), (snapshot) => {
+        combatants = [];
+        snapshot.forEach(doc => combatants.push({ id: doc.id, ...doc.data() }));
+        render();
+    });
 }
+
 
 async function saveState(){
 
