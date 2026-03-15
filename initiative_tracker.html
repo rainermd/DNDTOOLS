@@ -247,15 +247,19 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 
 function createRoom() {
     roomId = generateRoom();
-    localStorage.setItem("hostRoom-" + roomId, clientId); // store host
+
+    // Save locally immediately
+    localStorage.setItem("hostRoom-" + roomId, clientId);
+    isHost = true; // You are the host
 
     firebaseSetDoc(firebaseDoc(firebaseDB, "rooms", roomId), {
-        hostId: clientId,
+        hostId: clientId,     // Host stored in Firestore
         combatants: [],
         currentTurn: 0,
         round: 1,
         lastUpdated: Date.now()
     }).then(() => {
+        // Redirect with room code
         window.location.search = "?room=" + roomId;
     });
 }
@@ -302,21 +306,35 @@ const CONDITIONS=[
 "Stunned","Unconscious","Concentrating"
 ]
 
+
 function loadState() {
     if (!roomId) return;
     const roomRef = firebaseDoc(firebaseDB, "rooms", roomId);
 
     firebaseOnSnapshot(roomRef, (snapshot) => {
         if (!snapshot.exists()) {
-            saveState();
+            // Create empty room if somehow missing
+            if (isHost) saveState(); 
             return;
         }
 
         const data = snapshot.data();
 
-        // ✅ Only the original creator is host
+        // ✅ Determine host robustly
         const savedHostId = localStorage.getItem("hostRoom-" + roomId);
-        isHost = savedHostId === data.hostId;
+
+        if (data.hostId) {
+            isHost = savedHostId === data.hostId;
+        } else if (savedHostId) {
+            // Fallback if Firestore hasn’t written yet
+            isHost = true;
+            // Write hostId to Firestore
+            firebaseSetDoc(firebaseDoc(firebaseDB, "rooms", roomId), {
+                hostId: savedHostId
+            }, { merge: true });
+        } else {
+            isHost = false;
+        }
 
         document.getElementById("roomDisplay").innerText =
             `Room: ${roomId}` + (isHost ? " (Host)" : "");
