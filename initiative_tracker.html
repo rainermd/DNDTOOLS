@@ -247,6 +247,7 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 
 function createRoom() {
     roomId = generateRoom();
+    localStorage.setItem("hostRoom-" + roomId, clientId); // store host
 
     firebaseSetDoc(firebaseDoc(firebaseDB, "rooms", roomId), {
         hostId: clientId,
@@ -255,11 +256,9 @@ function createRoom() {
         round: 1,
         lastUpdated: Date.now()
     }).then(() => {
-        // Now that Firebase write is complete, join the room
         window.location.search = "?room=" + roomId;
     });
 }
-
 
 
 function joinRoom(){
@@ -315,10 +314,10 @@ function loadState() {
 
         const data = snapshot.data();
 
-        // ✅ Determine if current user is host
-        isHost = clientId === data.hostId;
+        // ✅ Only the original creator is host
+        const savedHostId = localStorage.getItem("hostRoom-" + roomId);
+        isHost = savedHostId === data.hostId;
 
-        // ✅ Update room display only here, after snapshot arrives
         document.getElementById("roomDisplay").innerText =
             `Room: ${roomId}` + (isHost ? " (Host)" : "");
 
@@ -348,19 +347,20 @@ lastUpdated: Date.now()
 }
 
 function addCombatant(){
-    combatants.push({
-        id: Date.now(),
-        init: "",
-        name: "Combatant",
-        hp: "",
-        ac: "",
-        notes: "",
-        color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
-        conditions: [],
-        resources: [],
-        locked: false,      // NEW
-        fogOfWar: false     // NEW
-    });
+    // When adding a combatant
+combatants.push({
+    id: Date.now(),
+    init: "",
+    name: "Combatant",
+    hp: "",
+    ac: "",
+    notes: "",
+    color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
+    conditions: [],
+    resources: [],
+    locked: false,
+    hide: { name:false, hp:false, ac:false, notes:false, resources:false } // NEW
+});
     saveState();
     render();
 }
@@ -523,14 +523,17 @@ function render() {
             row.classList.add("turnGlow");
         }
 
-        // Determine display values for fog of war
-        const displayInit = (!isHost && c.fogOfWar) ? "??" : c.init;
-        const displayHP = (!isHost && c.fogOfWar) ? "??" : c.hp;
-        const displayAC = (!isHost && c.fogOfWar) ? "??" : c.ac;
+        // --- Display values with per-field hide/fog-of-war ---
+        const displayInit   = (!isHost && c.hide?.init) ? "??" : c.init;
+        const displayName   = (!isHost && c.hide?.name) ? "??" : c.name;
+        const displayHP     = (!isHost && c.hide?.hp) ? "??" : c.hp;
+        const displayAC     = (!isHost && c.hide?.ac) ? "??" : c.ac;
+        const displayNotes  = (!isHost && c.hide?.notes) ? "??" : c.notes;
+        const resourcesHidden = (!isHost && c.hide?.resources);
+
         const notesDisabled = !isHost && c.locked ? "disabled" : "";
 
         row.innerHTML = `
-
 <td class="text-center font-bold">${index === currentTurn ? "➤" : ""}</td>
 
 <td class="text-center">
@@ -538,13 +541,15 @@ function render() {
 onmousedown="event.stopPropagation()"
 oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'init',this.value)`}"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
+${isHost ? `<button onclick="toggleHide(${c.id},'init')">👁️</button>` : ''}
 </td>
 
 <td class="text-center">
-<input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${displayName}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'name',this.value)`}"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
+${isHost ? `<button onclick="toggleHide(${c.id},'name')">👁️</button>` : ''}
 </td>
 
 <td class="text-center relative">
@@ -554,6 +559,7 @@ onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
 oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'hp',this.value)`}"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
+${isHost ? `<button onclick="toggleHide(${c.id},'hp')">👁️</button>` : ''}
 </td>
 
 <td class="text-center">
@@ -561,10 +567,11 @@ ${(!isHost && c.locked) ? 'disabled' : ''}>
 onmousedown="event.stopPropagation()"
 oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'ac',this.value)`}"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
+${isHost ? `<button onclick="toggleHide(${c.id},'ac')">👁️</button>` : ''}
 </td>
 
 <td class="text-xs">
-${c.resources.map((r, rid) => `
+${!resourcesHidden ? c.resources.map((r, rid) => `
 <div class="resourceRow">
 <span class="font-semibold">${r.name}</span>
 <button onclick="${(!isHost && c.locked) ? '' : `deleteResource(${c.id},${rid})`}"
@@ -574,8 +581,7 @@ ${r.used.map((u, i) => `
 class="circle ${u ? "filled" : ""}"></div>
 `).join("")}
 </div>
-`).join("")}
-
+`).join("") : "Hidden"}
 <div class="flex justify-center gap-1 mt-1">
 <input id="resName_${c.id}" placeholder="Res"
 class="border rounded text-xs px-1 w-16 bg-white dark:bg-slate-700 dark:border-slate-600"
@@ -585,6 +591,7 @@ class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-s
 onmousedown="event.stopPropagation()" ${(!isHost && c.locked) ? 'disabled' : ''}>
 <button onclick="${(!isHost && c.locked) ? '' : `createResource(${c.id})`}"
 class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs" ${(!isHost && c.locked) ? 'disabled' : ''}>+</button>
+${isHost ? `<button onclick="toggleHide(${c.id},'resources')">👁️</button>` : ''}
 </div>
 </td>
 
@@ -607,7 +614,8 @@ ${CONDITIONS.map(c => `<option>${c}</option>`).join("")}
 <td class="p-1">
 <textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'notes',this.value)`}" ${notesDisabled}>${c.notes}</textarea>
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'notes',this.value)`}" ${notesDisabled}>${displayNotes}</textarea>
+${isHost ? `<button onclick="toggleHide(${c.id},'notes')">👁️</button>` : ''}
 </td>
 
 <td class="text-center">
@@ -623,11 +631,9 @@ class="bg-green-200 px-1 rounded text-green-800 font-bold" ${(!isHost && c.locke
 <button onclick="${(!isHost && c.locked) ? '' : `removeCombatant(${c.id})`}"
 class="bg-red-200 px-1 rounded text-red-800 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
 
-${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounded text-xs">
-${c.locked ? 'Unlock' : 'Lock'}</button>` : ''}
+${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.locked ? '🔒' : '🔓'}</button>` : ''}
 
-${isHost ? `<button onclick="toggleFog(${c.id})" class="bg-gray-300 px-1 rounded text-xs">
-${c.fogOfWar ? 'Reveal' : 'Hide'}</button>` : ''}
+${isHost ? `<button onclick="toggleFog(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.fogOfWar ? 'Reveal' : 'Hide'}</button>` : ''}
 
 </td>
 `;
@@ -646,6 +652,14 @@ c.init=Math.floor(Math.random()*20)+1
 })
 saveState()
 render()
+}
+
+function toggleHide(id, field) {
+    if (!isHost) return;
+    const c = combatants.find(c => c.id === id);
+    c.hide[field] = !c.hide[field];
+    saveState();
+    render();
 }
 
 function sortInitiative(){
