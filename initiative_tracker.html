@@ -360,6 +360,21 @@ function loadState() {
     });
 }
 
+function rollInitiative(){
+
+    combatants.forEach(c => {
+
+        // Only roll if the field is empty
+        if(c.init === "" || c.init === null || isNaN(c.init)){
+            c.init = Math.floor(Math.random() * 20) + 1;
+        }
+
+    });
+
+    saveState();
+    render();
+}
+
 async function saveState(){
 
 if(!roomId) return
@@ -500,11 +515,15 @@ function update(id,key,value){
     saveStateDebounced();
 }
 
-function updateColor(id,value,input){
-const c=combatants.find(c=>c.id===id)
-c.color=value
-input.closest("tr").style.backgroundColor=value
-saveState()
+function commitColor(id,value,input){
+    const c = combatants.find(c=>c.id===id);
+
+    c.color = value;
+
+    // update row instantly without rerender
+    input.closest("tr").style.backgroundColor = value;
+
+    saveState();
 }
 
 function dragStart(e){
@@ -663,7 +682,7 @@ oninput="updateNotes(${c.id}, this.value)">${displayNotes}</textarea>
 <td class="text-center">
 <input type="color" value="${c.color}"
 onmousedown="event.stopPropagation()"
-oninput="updateColor(${c.id},this.value,this)"
+onchange="commitColor(${c.id},this.value,this)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
