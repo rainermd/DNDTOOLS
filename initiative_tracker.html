@@ -296,32 +296,44 @@ function generateRoom(){
 return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
-async function createRoom(){
-    roomId = generateRoom()
+async function createRoom() {
+    // Generate a room code
+    roomId = generateRoom();
+
+    // Create the room in Firestore
     await firebaseSetDoc(
-        firebaseDoc(firebaseDB,"rooms",roomId),
+        firebaseDoc(firebaseDB, "rooms", roomId),
         {
-            round:1,
-            currentTurn:0,
-            hostId: userId   // <-- use current user's id
+            round: 1,
+            currentTurn: 0,
+            hostId: userId // current user becomes host
         }
-    )
-    window.location.search = "?room=" + roomId
-    if(isHost){
-    document.getElementById("roomDisplay").innerText += " (Host)"
+    );
+
+    // Set local host state immediately
+    isHost = true;
+    hostId = userId;
+
+    // Update UI without reloading
+    document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
+
+    // Start listening to room state
+    loadState();
 }
-}
 
 
 
-function joinRoom(){
+function joinRoom() {
+    const code = document.getElementById("roomInput").value.trim().toUpperCase();
+    if (!code) return;
 
-const code = document.getElementById("roomInput").value.trim().toUpperCase()
+    roomId = code;
 
-if(!code) return
+    // Update UI immediately
+    document.getElementById("roomDisplay").innerText = "Room: " + roomId;
 
-window.location.search = "?room=" + code
-
+    // Start listening to room state
+    loadState();
 }
 
 function copyInvite(){
@@ -409,43 +421,58 @@ lastUpdated: Date.now()
 
 }
 
-async function addCombatant(){
+async function addCombatant() {
+    if (!isHost) {
+        alert("Only the host can add combatants!");
+        return;
+    }
 
-await firebaseAddDoc(
-firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
-{
-name:"Combatant",
-init:"",
-hp:"",
-ac:"",
-notes:"",
-color:"#e5e7eb",
-conditions:[],
-resources:[],
-locked:false,
-hiddenFields:[]
-})
-
+    await firebaseAddDoc(
+        firebaseCollection(firebaseDB, "rooms", roomId, "combatants"),
+        {
+            name: "Combatant",
+            init: "",
+            hp: "",
+            ac: "",
+            notes: "",
+            color: "#e5e7eb",
+            conditions: [],
+            resources: [],
+            locked: false,
+            hiddenFields: []
+        }
+    );
 }
 
-function duplicateCombatant(id){
+async function duplicateCombatant(id) {
+    if (!isHost) {
+        alert("Only the host can duplicate combatants!");
+        return;
+    }
 
-const index=combatants.findIndex(c=>c.id===id)
-const copy=JSON.parse(JSON.stringify(combatants[index]))
-copy.id=Date.now()
+    const c = combatants.find(c => c.id === id);
+    if (!c) return;
 
-combatants.splice(index+1,0,copy)
+    // Make a copy without the id
+    const copy = JSON.parse(JSON.stringify(c));
+    delete copy.id; // Firestore will assign a new ID
 
-saveState()
-render()
+    // Add to Firestore
+    await firebaseAddDoc(
+        firebaseCollection(firebaseDB, "rooms", roomId, "combatants"),
+        copy
+    );
 }
 
-function removeCombatant(id){
+async function removeCombatant(id) {
+    if (!isHost) {
+        alert("Only the host can remove combatants!");
+        return;
+    }
 
-firebaseDeleteDoc(
-firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id)
-)
-
+    await firebaseDeleteDoc(
+        firebaseDoc(firebaseDB, "rooms", roomId, "combatants", id)
+    );
 }
 
 function createResource(id){
@@ -543,7 +570,8 @@ saveState()
 }
 
 function dragStart(e){
-dragId=e.currentTarget.dataset.id
+    if(!isHost) return; // Block non-hosts
+    dragId = e.currentTarget.dataset.id;
 }
 
 function dragOver(e){
