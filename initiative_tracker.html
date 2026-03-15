@@ -248,7 +248,7 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 function createRoom(){
     roomId = generateRoom();
     isHost = true;
-    localStorage.setItem("hostRoom-" + roomId, clientId); // optional local tracking
+    localStorage.setItem("hostRoom-" + roomId, clientId);
 
     firebaseSetDoc(firebaseDoc(firebaseDB,"rooms",roomId), {
         hostId: clientId,
@@ -256,9 +256,10 @@ function createRoom(){
         currentTurn: 0,
         round: 1,
         lastUpdated: Date.now()
+    }).then(() => {
+        // Force URL and render after creation
+        window.location.search = "?room=" + roomId;
     });
-
-    window.location.search = "?room=" + roomId;
 }
 
 function joinRoom(){
@@ -317,10 +318,15 @@ function loadState(){
         // Determine if current user is host
         isHost = clientId === data.hostId;
 
+        // Update room display
+        document.getElementById("roomDisplay").innerText = 
+            `Room: ${roomId}` + (isHost ? " (Host)" : "");
+
         combatants = data.combatants || [];
         currentTurn = data.currentTurn || 0;
         round = data.round || 1;
 
+        // ✅ Ensure render sees the updated isHost
         render();
     });
 }
