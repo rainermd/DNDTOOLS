@@ -205,8 +205,20 @@ Back to Menu
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { 
+initializeApp 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import { 
+getFirestore,
+doc,
+setDoc,
+updateDoc,
+deleteDoc,
+onSnapshot,
+collection,
+addDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5jxaY22pAMuiq8uWlv-NOPmswbIQzdfs",
@@ -219,12 +231,17 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const firebaseDB = getFirestore(app);
 
-window.firebaseDB = db
-window.firebaseDoc = doc
-window.firebaseSetDoc = setDoc
-window.firebaseOnSnapshot = onSnapshot
+import {
+doc as firebaseDoc,
+setDoc as firebaseSetDoc,
+updateDoc as firebaseUpdateDoc,
+deleteDoc as firebaseDeleteDoc,
+onSnapshot as firebaseOnSnapshot,
+collection as firebaseCollection,
+addDoc as firebaseAddDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 </script>
 
@@ -232,17 +249,70 @@ window.firebaseOnSnapshot = onSnapshot
 
 let roomId = new URLSearchParams(window.location.search).get("room")
 
+// ----------------- HOST / PLAYER DETECTION -----------------
+let hostId = null
+let userId = crypto.randomUUID() // unique per user
+let isHost = false
+
+// Listen for room host info
+if(roomId){
+    firebaseOnSnapshot(
+        firebaseDoc(firebaseDB,"rooms",roomId),
+        snapshot => {
+            if(!snapshot.exists()) return
+            const data = snapshot.data()
+            hostId = data.hostId
+            isHost = (hostId === userId)
+        }
+    )
+}
+// -----------------------------------------------------------
+
+// ----------------- HOST FUNCTIONS -----------------
+async function toggleLock(id){
+    if(!isHost) return
+    const c = combatants.find(c=>c.id===id)
+    await firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),{
+        locked: !c.locked
+    })
+}
+
+async function toggleFog(id,field){
+    if(!isHost) return
+    const c = combatants.find(c=>c.id===id)
+    let hidden = c.hiddenFields || []
+    if(hidden.includes(field)){
+        hidden = hidden.filter(f=>f!==field)
+    } else {
+        hidden.push(field)
+    }
+    await firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),{
+        hiddenFields: hidden
+    })
+}
+// ---------------------------------------------------
+
 function generateRoom(){
 return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
-function createRoom(){
+async function createRoom(){
 
 roomId = generateRoom()
+
+await firebaseSetDoc(
+firebaseDoc(firebaseDB,"rooms",roomId),
+{
+round:1,
+currentTurn:0,
+hostId:crypto.randomUUID()
+})
 
 window.location.search = "?room=" + roomId
 
 }
+
+
 
 function joinRoom(){
 
@@ -286,21 +356,35 @@ const CONDITIONS=[
 ]
 
 function loadState(){
+
 if(!roomId) return
+
+// room state
 firebaseOnSnapshot(
 firebaseDoc(firebaseDB,"rooms",roomId),
 (snapshot)=>{
 
-if(!snapshot.exists()){
-saveState()
-return
-}
+if(!snapshot.exists()) return
 
 const data=snapshot.data()
 
-combatants=data.combatants || []
 currentTurn=data.currentTurn || 0
 round=data.round || 1
+
+render()
+
+})
+
+// combatants collection
+firebaseOnSnapshot(
+firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
+(snapshot)=>{
+
+combatants=[]
+
+snapshot.forEach(doc=>{
+combatants.push({id:doc.id,...doc.data()})
+})
 
 render()
 
@@ -325,20 +409,23 @@ lastUpdated: Date.now()
 
 }
 
-function addCombatant(){
-combatants.push({
-id:Date.now(),
-init:"",
+async function addCombatant(){
+
+await firebaseAddDoc(
+firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
+{
 name:"Combatant",
+init:"",
 hp:"",
 ac:"",
 notes:"",
-color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
+color:"#e5e7eb",
 conditions:[],
-resources:[]
+resources:[],
+locked:false,
+hiddenFields:[]
 })
-saveState()
-render()
+
 }
 
 function duplicateCombatant(id){
@@ -354,9 +441,11 @@ render()
 }
 
 function removeCombatant(id){
-combatants=combatants.filter(c=>c.id!==id)
-saveState()
-render()
+
+firebaseDeleteDoc(
+firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id)
+)
+
 }
 
 function createResource(id){
@@ -386,47 +475,64 @@ render()
 }
 
 function toggleCircle(cid,rid,index){
-const c=combatants.find(c=>c.id===cid)
-c.resources[rid].used[index]=!c.resources[rid].used[index]
-saveState()
-render()
-}
+    const c = combatants.find(c=>c.id===cid)
+    
+    // Block if resources are disabled (locked or fogged)
+    const locked = c.locked && !isHost
+    if(locked) return
+    if(c.hiddenFields?.includes('resources') && !isHost) return
 
-function addCondition(id,condition){
-
-if(!condition) return
-const c=combatants.find(c=>c.id===id)
-
-if(!c.conditions.includes(condition)){
-c.conditions.push(condition)
-}
-
-saveState()
-render()
+    c.resources[rid].used[index] = !c.resources[rid].used[index]
+    saveState()
+    render()
 }
 
 function removeCondition(id,condition){
-const c=combatants.find(c=>c.id===id)
-c.conditions=c.conditions.filter(x=>x!==condition)
-saveState()
-render()
+    const c = combatants.find(c=>c.id===id)
+
+    // Block if conditions are disabled
+    const locked = c.locked && !isHost
+    if(locked || c.hiddenFields?.includes('conditions')) return
+
+    c.conditions = c.conditions.filter(x => x !== condition)
+    saveState()
+    render()
+}
+
+function addCondition(id,condition){
+    if(!condition) return
+    const c = combatants.find(c=>c.id===id)
+
+    // Block if conditions are disabled
+    const locked = c.locked && !isHost
+    if(locked || c.hiddenFields?.includes('conditions')) return
+
+    if(!c.conditions.includes(condition)){
+        c.conditions.push(condition)
+    }
+
+    saveState()
+    render()
 }
 
 let saveTimer=null
 
 function update(id,key,value){
+    const c = combatants.find(c=>c.id===id)
+    
+    // Block if locked or hidden field for non-host
+    const locked = c.locked && !isHost
+    const fogged = c.hiddenFields?.includes(key) && !isHost
+    if(locked || fogged) return
 
-const c=combatants.find(c=>c.id===id)
+    let data={}
+    if(key==="init"||key==="hp"||key==="ac"){
+        data[key]=value===""?"":parseInt(value)
+    } else {
+        data[key]=value
+    }
 
-if(key==="init"||key==="hp"||key==="ac"){
-c[key]=value===""?"":parseInt(value)
-}else{
-c[key]=value
-}
-
-clearTimeout(saveTimer)
-saveTimer=setTimeout(saveState,300)
-
+    firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),data)
 }
 
 function updateColor(id,value,input){
@@ -471,6 +577,13 @@ combatants.forEach((c,index)=>{
 
 const row=document.createElement("tr")
 
+const locked = c.locked && !isHost
+const fogged = c.hiddenFields || []
+
+function fieldDisabled(field){
+    return locked || (fogged.includes(field) && !isHost)
+}
+
 row.dataset.id=c.id
 row.style.backgroundColor=c.color
 row.draggable=true
@@ -483,70 +596,75 @@ if(index===currentTurn){
 row.classList.add("turnGlow")
 }
 
-row.innerHTML=`
+row.innerHTML = `
 
 <td class="text-center font-bold">${index===currentTurn?"➤":""}</td>
 
 <td class="text-center">
 <input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'init',this.value)">
+oninput="update(${c.id},'init',this.value)"
+${fieldDisabled('init') ? 'disabled' : ''}>
 </td>
 
 <td class="text-center">
 <input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'name',this.value)">
+oninput="update(${c.id},'name',this.value)"
+${fieldDisabled('name') ? 'disabled' : ''}>
 </td>
 
 <td class="text-center relative">
-
 <input value="${c.hp}" 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
-oninput="update(${c.id},'hp',this.value)">
-
+oninput="update(${c.id},'hp',this.value)"
+${fieldDisabled('hp') ? 'disabled' : ''}>
 </td>
 
 <td class="text-center">
 <input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'ac',this.value)">
+oninput="update(${c.id},'ac',this.value)"
+${fieldDisabled('ac') ? 'disabled' : ''}>
 </td>
 
 <td class="text-xs">
 
 ${c.resources.map((r,rid)=>`
-
 <div class="resourceRow">
 
 <span class="font-semibold">${r.name}</span>
 
 <button onclick="deleteResource(${c.id},${rid})"
-class="text-red-600 font-bold">✖</button>
+class="text-red-600 font-bold"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}">✖</button>
 
 ${r.used.map((u,i)=>`
 <div onclick="toggleCircle(${c.id},${rid},${i})"
-class="circle ${u?"filled":""}"></div>
+class="circle ${u?"filled":""}"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}"></div>
 `).join("")}
 
 </div>
-
 `).join("")}
 
 <div class="flex justify-center gap-1 mt-1">
 
 <input id="resName_${c.id}" placeholder="Res"
 class="border rounded text-xs px-1 w-16 bg-white dark:bg-slate-700 dark:border-slate-600"
-onmousedown="event.stopPropagation()">
+onmousedown="event.stopPropagation()"
+${fieldDisabled('resources') ? 'disabled' : ''}>
 
 <input id="resCount_${c.id}" type="number" placeholder="#"
 class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-slate-600"
-onmousedown="event.stopPropagation()">
+onmousedown="event.stopPropagation()"
+${fieldDisabled('resources') ? 'disabled' : ''}>
 
 <button onclick="createResource(${c.id})"
-class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs">+</button>
+class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}">+</button>
 
 </div>
 
@@ -559,14 +677,16 @@ class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs">+</button>
 ${c.conditions.map(cond=>`
 <span class="bg-blue-200 dark:bg-blue-700 px-1 rounded text-[10px]">
 ${cond}
-<button onclick="removeCondition(${c.id},'${cond}')">x</button>
+<button onclick="removeCondition(${c.id},'${cond}')"
+style="${fieldDisabled('conditions') ? 'pointer-events:none;opacity:0.5;' : ''}">x</button>
 </span>
 `).join("")}
 
 </div>
 
 <select class="text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
-onchange="addCondition(${c.id},this.value);this.value=''">
+onchange="addCondition(${c.id},this.value);this.value=''"
+${fieldDisabled('conditions') ? 'disabled' : ''}>
 <option value="">+</option>
 ${CONDITIONS.map(c=>`<option>${c}</option>`).join("")}
 </select>
@@ -576,7 +696,8 @@ ${CONDITIONS.map(c=>`<option>${c}</option>`).join("")}
 <td class="p-1">
 <textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'notes',this.value)">${c.notes}</textarea>
+oninput="update(${c.id},'notes',this.value)"
+${fieldDisabled('notes') ? 'disabled' : ''}>${c.notes}</textarea>
 </td>
 
 <td class="text-center">
@@ -593,8 +714,19 @@ class="bg-green-200 px-1 rounded text-green-800 font-bold">✔</button>
 <button onclick="removeCombatant(${c.id})"
 class="bg-red-200 px-1 rounded text-red-800 font-bold">✖</button>
 
+${isHost ? `
+<button onclick="toggleLock('${c.id}')"
+class="px-1 rounded font-bold ${c.locked ? 'bg-yellow-400':'bg-gray-300'}">🔒</button>
+
+<button onclick="toggleFog('${c.id}','hp')"
+class="px-1 rounded font-bold ${c.hiddenFields?.includes('hp') ? 'bg-blue-400':'bg-gray-300'}">👁️‍🗨️HP</button>
+
+<button onclick="toggleFog('${c.id}','ac')"
+class="px-1 rounded font-bold ${c.hiddenFields?.includes('ac') ? 'bg-blue-400':'bg-gray-300'}">AC</button>
+` : ""}
+
 </td>
-`
+`;
 
 table.appendChild(row)
 
