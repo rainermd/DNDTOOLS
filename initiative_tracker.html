@@ -180,14 +180,47 @@ Back to Menu
 </button>
 </div>
 
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC5jxaY22pAMuiq8uWlv-NOPmswbIQzdfs",
+  authDomain: "dndhost.firebaseapp.com",
+  projectId: "dndhost",
+  storageBucket: "dndhost.firebasestorage.app",
+  messagingSenderId: "944013171333",
+  appId: "1:944013171333:web:6bb9c9ce2c9a18cbde27ec",
+  measurementId: "G-66P012KFNH"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.db = db;
+window.doc = doc;
+window.setDoc = setDoc;
+window.onSnapshot = onSnapshot;
+
+</script>
+
 <script>
+
+let roomId = new URLSearchParams(window.location.search).get("room")
+
+if(!roomId){
+roomId = Math.random().toString(36).substring(2,7).toUpperCase()
+window.location.search = "?room=" + roomId
+}
+
+document.body.insertAdjacentHTML("afterbegin",
+`<div class="mb-4 text-sm">Room: <b>${roomId}</b></div>`)   
 
 let combatants=[]
 let currentTurn=0
 let round=1
 let dragId=null
-
-const STORAGE_KEY="initiative_tracker_state"
 
 const CONDITIONS=[
 "Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated",
@@ -196,19 +229,36 @@ const CONDITIONS=[
 ]
 
 function loadState(){
-const saved=localStorage.getItem(STORAGE_KEY)
-if(saved){
-const data=JSON.parse(saved)
-combatants=data.combatants||[]
-currentTurn=data.currentTurn||0
-round=data.round||1
-}
+
+onSnapshot(
+doc(db,"rooms",roomId),
+(snapshot)=>{
+
+if(!snapshot.exists()) return
+
+const data = snapshot.data()
+
+combatants = data.combatants || []
+currentTurn = data.currentTurn || 0
+round = data.round || 1
+
+render()
+
+})
+
 }
 
 function saveState(){
-localStorage.setItem(STORAGE_KEY,JSON.stringify({
-combatants,currentTurn,round
-}))
+
+setDoc(
+doc(db,"rooms",roomId),
+{
+combatants,
+currentTurn,
+round
+}
+)
+
 }
 
 function addCombatant(){
