@@ -325,18 +325,6 @@ function loadState(){
     });
 }
 
-const data=snapshot.data()
-
-combatants=data.combatants || []
-currentTurn=data.currentTurn || 0
-round=data.round || 1
-
-render()
-
-})
-
-}
-
 async function saveState(){
 
 if(!roomId) return
