@@ -306,6 +306,19 @@ const CONDITIONS=[
 "Stunned","Unconscious","Concentrating"
 ]
 
+function commitUpdate(id, key, value){
+    const c = combatants.find(c => c.id === id);
+
+    if(key === "init" || key === "hp" || key === "ac"){
+        c[key] = value === "" ? "" : parseInt(value);
+    } else {
+        c[key] = value;
+    }
+
+    saveState().then(() => {
+        render();  // Now safe to rerender — user is done typing
+    });
+}
 
 function loadState() {
     if (!roomId) return;
@@ -546,7 +559,7 @@ function render() {
 <td class="text-center">
 <input type="number" value="${c.init === "" ? "" : c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'init',this.value)"
+onblur="commitUpdate(${c.id},'init',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
@@ -554,7 +567,7 @@ ${(!isHost && c.locked) ? 'disabled' : ''}>
 <td class="text-center">
 <input value="${c.name || ""}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'name',this.value)"
+onblur="commitUpdate(${c.id},'name',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 ${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
 </td>
@@ -565,7 +578,7 @@ ${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
-oninput="update(${c.id},'hp',this.value)"
+onblur="commitUpdate(${c.id},'hp',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 ${isHost ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
 </td>
@@ -574,7 +587,7 @@ ${isHost ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '�
 <td class="text-center">
 <input value="${c.ac === "" ? "" : c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'ac',this.value)"
+onblur="commitUpdate(${c.id},'ac',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 ${isHost ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
 </td>
