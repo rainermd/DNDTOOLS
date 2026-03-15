@@ -245,22 +245,22 @@ function generateRoom(){
 return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
-function createRoom(){
+function createRoom() {
     roomId = generateRoom();
-    isHost = true;
-    localStorage.setItem("hostRoom-" + roomId, clientId);
 
-    firebaseSetDoc(firebaseDoc(firebaseDB,"rooms",roomId), {
+    firebaseSetDoc(firebaseDoc(firebaseDB, "rooms", roomId), {
         hostId: clientId,
         combatants: [],
         currentTurn: 0,
         round: 1,
         lastUpdated: Date.now()
     }).then(() => {
-        // Force URL and render after creation
+        // Now that Firebase write is complete, join the room
         window.location.search = "?room=" + roomId;
     });
 }
+
+
 
 function joinRoom(){
 
@@ -303,30 +303,29 @@ const CONDITIONS=[
 "Stunned","Unconscious","Concentrating"
 ]
 
-function loadState(){
-    if(!roomId) return;
-    const roomRef = firebaseDoc(firebaseDB,"rooms",roomId);
+function loadState() {
+    if (!roomId) return;
+    const roomRef = firebaseDoc(firebaseDB, "rooms", roomId);
 
-    firebaseOnSnapshot(roomRef, (snapshot)=>{
-        if(!snapshot.exists()){
+    firebaseOnSnapshot(roomRef, (snapshot) => {
+        if (!snapshot.exists()) {
             saveState();
             return;
         }
 
         const data = snapshot.data();
 
-        // Determine if current user is host
+        // ✅ Determine if current user is host
         isHost = clientId === data.hostId;
 
-        // Update room display
-        document.getElementById("roomDisplay").innerText = 
+        // ✅ Update room display only here, after snapshot arrives
+        document.getElementById("roomDisplay").innerText =
             `Room: ${roomId}` + (isHost ? " (Host)" : "");
 
         combatants = data.combatants || [];
         currentTurn = data.currentTurn || 0;
         round = data.round || 1;
 
-        // ✅ Ensure render sees the updated isHost
         render();
     });
 }
