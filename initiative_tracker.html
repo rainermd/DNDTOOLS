@@ -297,19 +297,19 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
 async function createRoom(){
-
-roomId = generateRoom()
-
-await firebaseSetDoc(
-firebaseDoc(firebaseDB,"rooms",roomId),
-{
-round:1,
-currentTurn:0,
-hostId:crypto.randomUUID()
-})
-
-window.location.search = "?room=" + roomId
-
+    roomId = generateRoom()
+    await firebaseSetDoc(
+        firebaseDoc(firebaseDB,"rooms",roomId),
+        {
+            round:1,
+            currentTurn:0,
+            hostId: userId   // <-- use current user's id
+        }
+    )
+    window.location.search = "?room=" + roomId
+    if(isHost){
+    document.getElementById("roomDisplay").innerText += " (Host)"
+}
 }
 
 
