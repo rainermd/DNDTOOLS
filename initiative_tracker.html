@@ -385,7 +385,8 @@ firebaseDoc(firebaseDB,"rooms",roomId),
 combatants,
 currentTurn,
 round,
-lastUpdated: Date.now()
+lastUpdated: Date.now(),
+expiresAt: Date.now() + 1000 * 60 * 60 * 6 // expire after 6 hours
 },
 { merge: true }
 )
