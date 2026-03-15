@@ -22,6 +22,7 @@ tailwind.config = {
 }
 </script>
 
+<!-- Custom Styles -->
 <style>
 /* Glow effect for current turn */
 .turnGlow {
@@ -29,10 +30,13 @@ tailwind.config = {
     outline-offset: -2px;
     animation: pulseGlow 1.2s infinite alternate;
 }
+
 @keyframes pulseGlow {
     from { outline-color: rgba(34,197,94,0.6); }
     to { outline-color: rgba(34,197,94,1); }
 }
+
+/* Circles for resources or indicators */
 .circle {
     width: 14px;
     height: 14px;
@@ -42,38 +46,135 @@ tailwind.config = {
     cursor: pointer;
     background: white;
 }
-.dark .circle { background: #1e293b; border-color: #94a3b8; }
-.circle.filled { background: black; }
-.dark .circle.filled { background: #e5e7eb; }
-.resourceRow { display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; text-align: center; margin-bottom: 2px; }
+
+.dark .circle {
+    background: #1e293b;
+    border-color: #94a3b8;
+}
+
+.circle.filled {
+    background: black;
+}
+
+.dark .circle.filled {
+    background: #e5e7eb;
+}
+
+/* Row of resources or stats */
+.resourceRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    text-align: center;
+    margin-bottom: 2px;
+}
 </style>
+
 </head>
 
+
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-200 min-h-screen flex flex-col items-center py-10 transition-colors duration-300">
-
-<h1 class="text-3xl font-bold mb-4">🎲 Initiative Tracker</h1>
-
-<div id="roomUI" class="flex flex-wrap gap-2 items-center justify-center mb-6">
-<input id="roomInput" placeholder="Room Code" class="border rounded px-2 py-1 text-center text-sm bg-white dark:bg-slate-700 dark:border-slate-600">
-<button onclick="joinRoom()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">Join</button>
-<button onclick="createRoom()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">Create Room</button>
-<button onclick="copyInvite()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">Copy Invite</button>
-<span id="roomDisplay" class="text-sm font-semibold ml-2"></span>
+<!-- WEBSITE VERSION + BUG REPORT -->
+<div class="fixed bottom-2 left-2 flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded shadow text-xs select-none z-50">
+    <span>Version 1.0.1-beta</span>
+    <span>|</span>
+    <a id="bugReportLink"
+       href="#"
+       class="flex items-center gap-1 underline hover:text-blue-500">
+        🐞 Submit a bug report
+    </a>
 </div>
 
-<div class="text-lg font-semibold mb-6">Round: <span id="round">1</span></div>
+<script>
+document.getElementById("bugReportLink").addEventListener("click", function() {
+    const version = "1.0.0-beta";
+    const page = window.location.href;
+
+    const subject = encodeURIComponent("D&D Simulator Bug Report");
+    const body = encodeURIComponent(
+        `Version: ${version}
+Page: ${page}
+
+Describe the bug:
+-----------------
+
+Steps to reproduce:
+-----------------
+
+Expected result:
+-----------------
+
+Actual result:
+-----------------
+`
+    );
+
+    window.location.href = `mailto:my.email@gmail.com?subject=${subject}&body=${body}`;
+});
+</script>
+<h1 class="text-3xl font-bold mb-4">🎲 Initiative Tracker</h1>
+<div id="roomUI" class="flex flex-wrap gap-2 items-center justify-center mb-6">
+
+<input id="roomInput"
+placeholder="Room Code"
+class="border rounded px-2 py-1 text-center text-sm bg-white dark:bg-slate-700 dark:border-slate-600">
+
+<button onclick="joinRoom()"
+class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">
+Join
+</button>
+
+<button onclick="createRoom()"
+class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">
+Create Room
+</button>
+
+<button onclick="copyInvite()"
+class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">
+Copy Invite
+</button>
+
+<span id="roomDisplay" class="text-sm font-semibold ml-2"></span>
+
+</div>
+<div class="text-lg font-semibold mb-6">
+Round: <span id="round">1</span>
+</div>
 
 <div class="flex gap-3 mb-6 flex-wrap justify-center">
-<button onclick="addCombatant()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">Add</button>
-<button onclick="rollInitiative()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded shadow">Roll</button>
-<button onclick="sortInitiative()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">Sort</button>
-<button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">Next (Space)</button>
-<button onclick="resetEncounter()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded shadow">Reset</button>
-<button onclick="clearEncounter()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow">Clear</button>
+
+<button onclick="addCombatant()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">
+Add
+</button>
+
+<button onclick="rollInitiative()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded shadow">
+Roll
+</button>
+
+<button onclick="sortInitiative()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">
+Sort
+</button>
+
+<button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">
+Next (Space)
+</button>
+
+<button onclick="resetEncounter()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded shadow">
+Reset
+</button>
+
+<button onclick="clearEncounter()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow">
+Clear
+</button>
+
 </div>
 
 <div class="w-full max-w-7xl mx-auto px-2">
+
 <table class="w-full shadow rounded text-xs table-fixed bg-white dark:bg-slate-800 transition-colors">
+
 <thead class="bg-slate-200 dark:bg-slate-700 text-center">
 <tr>
 <th class="p-1 w-6"></th>
@@ -88,19 +189,37 @@ tailwind.config = {
 <th class="p-1 w-16"></th>
 </tr>
 </thead>
+
 <tbody id="combat-table"></tbody>
+
 </table>
+
 </div>
 
 <div class="flex justify-center pt-2">
-<button onclick="goToMenu()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">Back to Menu</button>
+<button onclick="goToMenu()"
+class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+Back to Menu
+</button>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ---------- FIREBASE CONFIG ----------
+import { 
+initializeApp 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
+import { 
+getFirestore,
+doc,
+setDoc,
+updateDoc,
+deleteDoc,
+onSnapshot,
+collection,
+addDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyC5jxaY22pAMuiq8uWlv-NOPmswbIQzdfs",
   authDomain: "dndhost.firebaseapp.com",
@@ -114,115 +233,712 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const firebaseDB = getFirestore(app);
 
-// ---------- GLOBAL STATE ----------
-let roomId = new URLSearchParams(window.location.search).get("room");
-let hostId = null;
-let userId = crypto.randomUUID();
-let isHost = false;
-let combatants = [];
-let currentTurn = 0;
-let round = 1;
-const CONDITIONS = ["Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated","Invisible","Paralyzed","Petrified","Poisoned","Prone","Restrained","Stunned","Unconscious","Concentrating"];
+import {
+doc as firebaseDoc,
+setDoc as firebaseSetDoc,
+updateDoc as firebaseUpdateDoc,
+deleteDoc as firebaseDeleteDoc,
+onSnapshot as firebaseOnSnapshot,
+collection as firebaseCollection,
+addDoc as firebaseAddDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ---------- ROOM FUNCTIONS ----------
+</script>
+
+<script>
+
+let roomId = new URLSearchParams(window.location.search).get("room")
+
+// ----------------- HOST / PLAYER DETECTION -----------------
+let hostId = null
+let userId = crypto.randomUUID() // unique per user
+let isHost = false
+
+// Listen for room host info
+if(roomId){
+    firebaseOnSnapshot(
+        firebaseDoc(firebaseDB,"rooms",roomId),
+        snapshot => {
+            if(!snapshot.exists()) return
+            const data = snapshot.data()
+            hostId = data.hostId
+            isHost = (hostId === userId)
+        }
+    )
+}
+// -----------------------------------------------------------
+
+// ----------------- HOST FUNCTIONS -----------------
+async function toggleLock(id){
+    if(!isHost) return
+    const c = combatants.find(c=>c.id===id)
+    await firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),{
+        locked: !c.locked
+    })
+}
+
+async function toggleFog(id,field){
+    if(!isHost) return
+    const c = combatants.find(c=>c.id===id)
+    let hidden = c.hiddenFields || []
+    if(hidden.includes(field)){
+        hidden = hidden.filter(f=>f!==field)
+    } else {
+        hidden.push(field)
+    }
+    await firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),{
+        hiddenFields: hidden
+    })
+}
+// ---------------------------------------------------
+
+function generateRoom(){
+return Math.random().toString(36).substring(2,7).toUpperCase()
+}
+
 async function createRoom() {
-    roomId = Math.random().toString(36).substring(2,7).toUpperCase();
-    await setDoc(doc(firebaseDB, "rooms", roomId), { round:1, currentTurn:0, hostId: userId });
-    isHost = true; hostId = userId;
+    // Generate a room code
+    roomId = generateRoom();
+
+    // Create the room in Firestore
+    await firebaseSetDoc(
+        firebaseDoc(firebaseDB, "rooms", roomId),
+        {
+            round: 1,
+            currentTurn: 0,
+            hostId: userId // current user becomes host
+        }
+    );
+
+    // Set local host state immediately
+    isHost = true;
+    hostId = userId;
+
+    // Update UI without reloading
     document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
+
+    // Start listening to room state
     loadState();
 }
-async function joinRoom() {
+
+
+
+function joinRoom() {
     const code = document.getElementById("roomInput").value.trim().toUpperCase();
-    if(!code) return;
+    if (!code) return;
+
     roomId = code;
+
+    // Update UI immediately
     document.getElementById("roomDisplay").innerText = "Room: " + roomId;
+
+    // Start listening to room state
     loadState();
 }
-function copyInvite() {
-    const url = window.location.origin + window.location.pathname + "?room=" + roomId;
-    navigator.clipboard.writeText(url);
-    alert("Invite link copied!");
+
+function copyInvite(){
+
+const url = window.location.origin + window.location.pathname + "?room=" + roomId
+
+navigator.clipboard.writeText(url)
+
+alert("Invite link copied!")
+
 }
+
+if(!roomId){
+
+document.getElementById("roomDisplay").innerText = "No room joined"
+
+}else{
+
+document.getElementById("roomDisplay").innerText = "Room: " + roomId
+
+}
+
+let combatants=[]
+let currentTurn=0
+let round=1
+let dragId=null
+
+const CONDITIONS=[
+"Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated",
+"Invisible","Paralyzed","Petrified","Poisoned","Prone","Restrained",
+"Stunned","Unconscious","Concentrating"
+]
+
+function loadState(){
+
+if(!roomId) return
+
+// room state
+firebaseOnSnapshot(
+firebaseDoc(firebaseDB,"rooms",roomId),
+(snapshot)=>{
+
+if(!snapshot.exists()) return
+
+const data=snapshot.data()
+
+currentTurn=data.currentTurn || 0
+round=data.round || 1
+
+render()
+
+})
+
+// combatants collection
+firebaseOnSnapshot(
+firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
+(snapshot)=>{
+
+combatants=[]
+
+snapshot.forEach(doc=>{
+combatants.push({id:doc.id,...doc.data()})
+})
+
+render()
+
+})
+
+}
+
+async function saveState(){
+
+if(!roomId) return
+
+await firebaseSetDoc(
+firebaseDoc(firebaseDB,"rooms",roomId),
+{
+combatants,
+currentTurn,
+round,
+lastUpdated: Date.now()
+},
+{ merge: true }
+)
+
+}
+
+async function addCombatant() {
+    if (!isHost) {
+        alert("Only the host can add combatants!");
+        return;
+    }
+
+    await firebaseAddDoc(
+        firebaseCollection(firebaseDB, "rooms", roomId, "combatants"),
+        {
+            name: "Combatant",
+            init: "",
+            hp: "",
+            ac: "",
+            notes: "",
+            color: "#e5e7eb",
+            conditions: [],
+            resources: [],
+            locked: false,
+            hiddenFields: []
+        }
+    );
+}
+
+async function duplicateCombatant(id) {
+    if (!isHost) {
+        alert("Only the host can duplicate combatants!");
+        return;
+    }
+
+    const c = combatants.find(c => c.id === id);
+    if (!c) return;
+
+    // Make a copy without the id
+    const copy = JSON.parse(JSON.stringify(c));
+    delete copy.id; // Firestore will assign a new ID
+
+    // Add to Firestore
+    await firebaseAddDoc(
+        firebaseCollection(firebaseDB, "rooms", roomId, "combatants"),
+        copy
+    );
+}
+
+async function removeCombatant(id) {
+    if (!isHost) {
+        alert("Only the host can remove combatants!");
+        return;
+    }
+
+    await firebaseDeleteDoc(
+        firebaseDoc(firebaseDB, "rooms", roomId, "combatants", id)
+    );
+}
+
+function createResource(id){
+
+const name=document.getElementById("resName_"+id).value
+const amount=parseInt(document.getElementById("resCount_"+id).value)
+
+if(!name || !amount) return
+
+const c=combatants.find(c=>c.id===id)
+
+c.resources.push({
+name,
+max:amount,
+used:Array(amount).fill(false)
+})
+
+saveState()
+render()
+}
+
+function deleteResource(cid,rid){
+const c=combatants.find(c=>c.id===cid)
+c.resources.splice(rid,1)
+saveState()
+render()
+}
+
+function toggleCircle(cid,rid,index){
+    const c = combatants.find(c=>c.id===cid)
+    
+    // Block if resources are disabled (locked or fogged)
+    const locked = c.locked && !isHost
+    if(locked) return
+    if(c.hiddenFields?.includes('resources') && !isHost) return
+
+    c.resources[rid].used[index] = !c.resources[rid].used[index]
+    saveState()
+    render()
+}
+
+function removeCondition(id,condition){
+    const c = combatants.find(c=>c.id===id)
+
+    // Block if conditions are disabled
+    const locked = c.locked && !isHost
+    if(locked || c.hiddenFields?.includes('conditions')) return
+
+    c.conditions = c.conditions.filter(x => x !== condition)
+    saveState()
+    render()
+}
+
+function addCondition(id,condition){
+    if(!condition) return
+    const c = combatants.find(c=>c.id===id)
+
+    // Block if conditions are disabled
+    const locked = c.locked && !isHost
+    if(locked || c.hiddenFields?.includes('conditions')) return
+
+    if(!c.conditions.includes(condition)){
+        c.conditions.push(condition)
+    }
+
+    saveState()
+    render()
+}
+
+let saveTimer=null
+
+function update(id,key,value){
+    const c = combatants.find(c=>c.id===id)
+    
+    // Block if locked or hidden field for non-host
+    const locked = c.locked && !isHost
+    const fogged = c.hiddenFields?.includes(key) && !isHost
+    if(locked || fogged) return
+
+    let data={}
+    if(key==="init"||key==="hp"||key==="ac"){
+        data[key]=value===""?"":parseInt(value)
+    } else {
+        data[key]=value
+    }
+
+    firebaseUpdateDoc(firebaseDoc(firebaseDB,"rooms",roomId,"combatants",id),data)
+}
+
+function updateColor(id,value,input){
+const c=combatants.find(c=>c.id===id)
+c.color=value
+input.closest("tr").style.backgroundColor=value
+saveState()
+}
+
+function dragStart(e){
+    if(!isHost) return; // Block non-hosts
+    dragId = e.currentTarget.dataset.id;
+}
+
+function dragOver(e){
+e.preventDefault()
+}
+
+function dropRow(e){
+
+e.preventDefault()
+
+const targetId=e.currentTarget.dataset.id
+
+const from=combatants.findIndex(c=>c.id==dragId)
+const to=combatants.findIndex(c=>c.id==targetId)
+
+const moved=combatants.splice(from,1)[0]
+combatants.splice(to,0,moved)
+
+saveState()
+render()
+}
+
+function render(){
+
+const table=document.getElementById("combat-table")
+table.innerHTML=""
+
+document.getElementById("round").innerText=round
+
+combatants.forEach((c,index)=>{
+
+const row=document.createElement("tr")
+
+const locked = c.locked && !isHost
+const fogged = c.hiddenFields || []
+
+function fieldDisabled(field){
+    return locked || (fogged.includes(field) && !isHost)
+}
+
+row.dataset.id=c.id
+row.style.backgroundColor=c.color
+row.draggable=true
+
+row.ondragstart=dragStart
+row.ondragover=dragOver
+row.ondrop=dropRow
+
+if(index===currentTurn){
+row.classList.add("turnGlow")
+}
+
+row.innerHTML = `
+
+<td class="text-center font-bold">${index===currentTurn?"➤":""}</td>
+
+<td class="text-center">
+<input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'init',this.value)"
+${fieldDisabled('init') ? 'disabled' : ''}>
+</td>
+
+<td class="text-center">
+<input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'name',this.value)"
+${fieldDisabled('name') ? 'disabled' : ''}>
+</td>
+
+<td class="text-center relative">
+<input value="${c.hp}" 
+class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+onclick="openHPEdit(${c.id},this)"
+oninput="update(${c.id},'hp',this.value)"
+${fieldDisabled('hp') ? 'disabled' : ''}>
+</td>
+
+<td class="text-center">
+<input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'ac',this.value)"
+${fieldDisabled('ac') ? 'disabled' : ''}>
+</td>
+
+<td class="text-xs">
+
+${c.resources.map((r,rid)=>`
+<div class="resourceRow">
+
+<span class="font-semibold">${r.name}</span>
+
+<button onclick="deleteResource(${c.id},${rid})"
+class="text-red-600 font-bold"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}">✖</button>
+
+${r.used.map((u,i)=>`
+<div onclick="toggleCircle(${c.id},${rid},${i})"
+class="circle ${u?"filled":""}"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}"></div>
+`).join("")}
+
+</div>
+`).join("")}
+
+<div class="flex justify-center gap-1 mt-1">
+
+<input id="resName_${c.id}" placeholder="Res"
+class="border rounded text-xs px-1 w-16 bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+${fieldDisabled('resources') ? 'disabled' : ''}>
+
+<input id="resCount_${c.id}" type="number" placeholder="#"
+class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+${fieldDisabled('resources') ? 'disabled' : ''}>
+
+<button onclick="createResource(${c.id})"
+class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs"
+style="${fieldDisabled('resources') ? 'pointer-events:none;opacity:0.5;' : ''}">+</button>
+
+</div>
+
+</td>
+
+<td class="text-center">
+
+<div class="flex flex-wrap gap-1 justify-center">
+
+${c.conditions.map(cond=>`
+<span class="bg-blue-200 dark:bg-blue-700 px-1 rounded text-[10px]">
+${cond}
+<button onclick="removeCondition(${c.id},'${cond}')"
+style="${fieldDisabled('conditions') ? 'pointer-events:none;opacity:0.5;' : ''}">x</button>
+</span>
+`).join("")}
+
+</div>
+
+<select class="text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
+onchange="addCondition(${c.id},this.value);this.value=''"
+${fieldDisabled('conditions') ? 'disabled' : ''}>
+<option value="">+</option>
+${CONDITIONS.map(c=>`<option>${c}</option>`).join("")}
+</select>
+
+</td>
+
+<td class="p-1">
+<textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
+onmousedown="event.stopPropagation()"
+oninput="update(${c.id},'notes',this.value)"
+${fieldDisabled('notes') ? 'disabled' : ''}>${c.notes}</textarea>
+</td>
+
+<td class="text-center">
+<input type="color" value="${c.color}"
+onmousedown="event.stopPropagation()"
+oninput="updateColor(${c.id},this.value,this)">
+</td>
+
+<td class="text-center space-x-1">
+
+<button onclick="duplicateCombatant(${c.id})"
+class="bg-green-200 px-1 rounded text-green-800 font-bold">✔</button>
+
+<button onclick="removeCombatant(${c.id})"
+class="bg-red-200 px-1 rounded text-red-800 font-bold">✖</button>
+
+${isHost ? `
+<button onclick="toggleLock('${c.id}')"
+class="px-1 rounded font-bold ${c.locked ? 'bg-yellow-400':'bg-gray-300'}">🔒</button>
+
+<button onclick="toggleFog('${c.id}','hp')"
+class="px-1 rounded font-bold ${c.hiddenFields?.includes('hp') ? 'bg-blue-400':'bg-gray-300'}">👁️‍🗨️HP</button>
+
+<button onclick="toggleFog('${c.id}','ac')"
+class="px-1 rounded font-bold ${c.hiddenFields?.includes('ac') ? 'bg-blue-400':'bg-gray-300'}">AC</button>
+` : ""}
+
+</td>
+`;
+
+table.appendChild(row)
+
+})
+
+}
+
+function rollInitiative(){
+combatants.forEach(c=>{
+if(c.init===""){
+c.init=Math.floor(Math.random()*20)+1
+}
+})
+saveState()
+render()
+}
+
+function sortInitiative(){
+
+combatants.sort((a,b)=>(b.init||0)-(a.init||0))
+currentTurn=0
+round=1
+
+saveState()
+render()
+}
+
+function nextTurn(){
+
+if(combatants.length===0)return
+
+currentTurn++
+
+if(currentTurn>=combatants.length){
+currentTurn=0
+round++
+}
+
+saveState()
+render()
+}
+
+function resetEncounter(){
+
+combatants.forEach(c=>c.init="")
+
+currentTurn=0
+round=1
+
+saveState()
+render()
+}
+
+function clearEncounter(){
+
+combatants=[]
+currentTurn=0
+round=1
+
+saveState()
+render()
+
+}
+
+document.addEventListener("keydown",function(e){
+
+if(e.code==="Space" && !["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)){
+e.preventDefault()
+nextTurn()
+}
+
+})
+
+window.addEventListener("DOMContentLoaded", () => {
+    loadState()
+})
+
+</script>
+
+<button onclick="toggleDarkMode()"
+class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">
+🌙
+</button>
+
+<script>
+function toggleDarkMode(){
+
+const root=document.documentElement
+
+if(root.classList.contains("dark")){
+root.classList.remove("dark")
+localStorage.setItem("theme","light")
+}else{
+root.classList.add("dark")
+localStorage.setItem("theme","dark")
+}
+
+}
+function goToMenu(){
+window.location.href="."
+}
+
+function openHPEdit(id,input){
+
+event.stopPropagation()
+
+closeHPEdit()
+
+const container=document.createElement("div")
+
+container.id="hpEditor"
+
+container.className="absolute z-50 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded shadow p-2 flex gap-1 items-center"
+
+container.onclick=(e)=>e.stopPropagation()
+
+container.innerHTML=`
+
+<input id="hpAdjustValue" type="number" min="0" value="0"
+class="border rounded w-16 text-center bg-white dark:bg-slate-700 dark:border-slate-600">
+
+<button onclick="adjustHP(${id},1)"
+class="px-2 bg-green-500 text-white rounded">+</button>
+
+<button onclick="adjustHP(${id},-1)"
+class="px-2 bg-red-500 text-white rounded">-</button>
+
+`
+
+document.body.appendChild(container)
+
+const rect=input.getBoundingClientRect()
+
+container.style.left=rect.left+"px"
+container.style.top=(rect.bottom+4)+"px"
+
+}
+
+function adjustHP(id,sign){
+
+const val=parseInt(document.getElementById("hpAdjustValue").value)
+
+if(isNaN(val) || val<0) return
+
+const c=combatants.find(c=>c.id===id)
+
+let current=parseInt(c.hp)||0
+
+current += sign * val
+
+c.hp=current
+
+saveState()
+render()
+
+}
+
+function closeHPEdit(){
+
+const existing=document.getElementById("hpEditor")
+
+if(existing){
+existing.remove()
+}
+
+}
+
+document.addEventListener("click",function(e){
+
+const popup=document.getElementById("hpEditor")
+
+if(!popup) return
+
+if(!popup.contains(e.target)){
+closeHPEdit()
+}
+
+})
+
+// Expose functions to global scope so buttons can call them
 window.createRoom = createRoom;
 window.joinRoom = joinRoom;
 window.copyInvite = copyInvite;
-
-// ---------- STATE LISTENERS ----------
-function loadState() {
-    if(!roomId) return;
-    onSnapshot(doc(firebaseDB,"rooms",roomId), snapshot => {
-        if(!snapshot.exists()) return;
-        const data = snapshot.data();
-        currentTurn = data.currentTurn || 0;
-        round = data.round || 1;
-        render();
-    });
-    onSnapshot(collection(firebaseDB,"rooms",roomId,"combatants"), snapshot => {
-        combatants = [];
-        snapshot.forEach(doc => combatants.push({id:doc.id, ...doc.data()}));
-        render();
-    });
-}
-
-// ---------- HOST / COMBATANT FUNCTIONS ----------
-async function addCombatant() {
-    if(!isHost) { alert("Only host can add combatants"); return; }
-    await addDoc(collection(firebaseDB, "rooms", roomId, "combatants"), { name:"Combatant", init:"", hp:"", ac:"", notes:"", color:"#e5e7eb", conditions:[], resources:[], locked:false, hiddenFields:[] });
-}
 window.addCombatant = addCombatant;
-
-// ---------- UI / RENDER ----------
-function render() {
-    const table = document.getElementById("combat-table");
-    table.innerHTML = "";
-    document.getElementById("round").innerText = round;
-    combatants.forEach((c,index)=>{
-        const row = document.createElement("tr");
-        row.dataset.id = c.id;
-        row.style.backgroundColor = c.color;
-        row.draggable = true;
-        if(index===currentTurn) row.classList.add("turnGlow");
-        row.innerHTML = `
-<td class="text-center font-bold">${index===currentTurn?"➤":""}</td>
-<td class="text-center"><input type="number" value="${c.init}" class="w-12 border rounded text-center" oninput=""></td>
-<td class="text-center"><input value="${c.name}" class="border rounded w-32 text-center" oninput=""></td>
-<td class="text-center"><input value="${c.hp}" class="border rounded w-14 text-center" oninput=""></td>
-<td class="text-center"><input value="${c.ac}" class="border rounded w-12 text-center" oninput=""></td>
-<td>Resources</td>
-<td>Conditions</td>
-<td><textarea>${c.notes}</textarea></td>
-<td><input type="color" value="${c.color}"></td>
-<td></td>
-`;
-        table.appendChild(row);
-    });
-}
-
-// ---------- INITIALIZATION ----------
-window.addEventListener("DOMContentLoaded", () => {
-    if(!roomId){
-        document.getElementById("roomDisplay").innerText = "No room joined";
-    } else {
-        document.getElementById("roomDisplay").innerText = "Room: " + roomId;
-        loadState();
-    }
-});
-</script>
-
-<button onclick="toggleDarkMode()" class="fixed bottom-5 right-5 px-3 py-2 rounded-lg shadow bg-gray-800 text-white dark:bg-gray-700 z-50">🌙</button>
-<script>
-function toggleDarkMode(){
-    const root = document.documentElement;
-    if(root.classList.contains("dark")){
-        root.classList.remove("dark");
-        localStorage.setItem("theme","light");
-    } else {
-        root.classList.add("dark");
-        localStorage.setItem("theme","dark");
-    }
-}
-function goToMenu(){ window.location.href = "."; }
 </script>
 
 </body>
