@@ -230,6 +230,15 @@ window.firebaseOnSnapshot = onSnapshot
 
 <script>
 
+// --- Client ID and Host Tracking ---
+let clientId = localStorage.getItem("clientId");
+if (!clientId) {
+    clientId = Date.now() + "-" + Math.random().toString(36).substring(2,7);
+    localStorage.setItem("clientId", clientId);
+}
+
+let isHost = false; // will be true if this user created the room
+
 let roomId = new URLSearchParams(window.location.search).get("room")
 
 function generateRoom(){
@@ -237,11 +246,19 @@ return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
 function createRoom(){
+    roomId = generateRoom();
+    isHost = true;
+    localStorage.setItem("hostRoom-" + roomId, clientId); // optional local tracking
 
-roomId = generateRoom()
+    firebaseSetDoc(firebaseDoc(firebaseDB,"rooms",roomId), {
+        hostId: clientId,
+        combatants: [],
+        currentTurn: 0,
+        round: 1,
+        lastUpdated: Date.now()
+    });
 
-window.location.search = "?room=" + roomId
-
+    window.location.search = "?room=" + roomId;
 }
 
 function joinRoom(){
@@ -286,14 +303,26 @@ const CONDITIONS=[
 ]
 
 function loadState(){
-if(!roomId) return
-firebaseOnSnapshot(
-firebaseDoc(firebaseDB,"rooms",roomId),
-(snapshot)=>{
+    if(!roomId) return;
+    const roomRef = firebaseDoc(firebaseDB,"rooms",roomId);
 
-if(!snapshot.exists()){
-saveState()
-return
+    firebaseOnSnapshot(roomRef, (snapshot)=>{
+        if(!snapshot.exists()){
+            saveState();
+            return;
+        }
+
+        const data = snapshot.data();
+
+        // Determine if current user is host
+        isHost = clientId === data.hostId;
+
+        combatants = data.combatants || [];
+        currentTurn = data.currentTurn || 0;
+        round = data.round || 1;
+
+        render();
+    });
 }
 
 const data=snapshot.data()
@@ -326,19 +355,21 @@ lastUpdated: Date.now()
 }
 
 function addCombatant(){
-combatants.push({
-id:Date.now(),
-init:"",
-name:"Combatant",
-hp:"",
-ac:"",
-notes:"",
-color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
-conditions:[],
-resources:[]
-})
-saveState()
-render()
+    combatants.push({
+        id: Date.now(),
+        init: "",
+        name: "Combatant",
+        hp: "",
+        ac: "",
+        notes: "",
+        color: document.documentElement.classList.contains("dark") ? "#334155" : "#e5e7eb",
+        conditions: [],
+        resources: [],
+        locked: false,      // NEW
+        fogOfWar: false     // NEW
+    });
+    saveState();
+    render();
 }
 
 function duplicateCombatant(id){
@@ -391,6 +422,23 @@ c.resources[rid].used[index]=!c.resources[rid].used[index]
 saveState()
 render()
 }
+// Toggle lock (host only)
+function toggleLock(id){
+    if (!isHost) return;
+    const c = combatants.find(c => c.id === id);
+    c.locked = !c.locked;
+    saveState();
+    render();
+}
+
+// Toggle fog of war (host only)
+function toggleFog(id){
+    if (!isHost) return;
+    const c = combatants.find(c => c.id === id);
+    c.fogOfWar = !c.fogOfWar;
+    saveState();
+    render();
+}
 
 function addCondition(id,condition){
 
@@ -412,21 +460,20 @@ saveState()
 render()
 }
 
-let saveTimer=null
-
-function update(id,key,value){
-
-const c=combatants.find(c=>c.id===id)
-
-if(key==="init"||key==="hp"||key==="ac"){
-c[key]=value===""?"":parseInt(value)
-}else{
-c[key]=value
+let saveTimer = null;
+function saveStateDebounced(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 200); // update max 5x/sec
 }
 
-clearTimeout(saveTimer)
-saveTimer=setTimeout(saveState,300)
-
+function update(id,key,value){
+    const c = combatants.find(c=>c.id===id);
+    if(key==="init"||key==="hp"||key==="ac"){
+        c[key] = value===""?"":parseInt(value);
+    }else{
+        c[key] = value;
+    }
+    saveStateDebounced();
 }
 
 function updateColor(id,value,input){
@@ -460,145 +507,141 @@ saveState()
 render()
 }
 
-function render(){
+function render() {
 
-const table=document.getElementById("combat-table")
-table.innerHTML=""
+    const table = document.getElementById("combat-table");
+    table.innerHTML = "";
 
-document.getElementById("round").innerText=round
+    document.getElementById("round").innerText = round;
 
-combatants.forEach((c,index)=>{
+    combatants.forEach((c, index) => {
 
-const row=document.createElement("tr")
+        const row = document.createElement("tr");
 
-row.dataset.id=c.id
-row.style.backgroundColor=c.color
-row.draggable=true
+        row.dataset.id = c.id;
+        row.style.backgroundColor = c.color;
+        row.draggable = true;
 
-row.ondragstart=dragStart
-row.ondragover=dragOver
-row.ondrop=dropRow
+        row.ondragstart = dragStart;
+        row.ondragover = dragOver;
+        row.ondrop = dropRow;
 
-if(index===currentTurn){
-row.classList.add("turnGlow")
-}
+        if (index === currentTurn) {
+            row.classList.add("turnGlow");
+        }
 
-row.innerHTML=`
+        // Determine display values for fog of war
+        const displayInit = (!isHost && c.fogOfWar) ? "??" : c.init;
+        const displayHP = (!isHost && c.fogOfWar) ? "??" : c.hp;
+        const displayAC = (!isHost && c.fogOfWar) ? "??" : c.ac;
+        const notesDisabled = !isHost && c.locked ? "disabled" : "";
 
-<td class="text-center font-bold">${index===currentTurn?"➤":""}</td>
+        row.innerHTML = `
+
+<td class="text-center font-bold">${index === currentTurn ? "➤" : ""}</td>
 
 <td class="text-center">
-<input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input type="number" value="${displayInit}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'init',this.value)">
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'init',this.value)`}"
+${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <td class="text-center">
 <input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'name',this.value)">
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'name',this.value)`}"
+${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <td class="text-center relative">
-
-<input value="${c.hp}" 
+<input value="${displayHP}" 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
-oninput="update(${c.id},'hp',this.value)">
-
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'hp',this.value)`}"
+${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <td class="text-center">
-<input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${displayAC}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'ac',this.value)">
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'ac',this.value)`}"
+${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <td class="text-xs">
-
-${c.resources.map((r,rid)=>`
-
+${c.resources.map((r, rid) => `
 <div class="resourceRow">
-
 <span class="font-semibold">${r.name}</span>
-
-<button onclick="deleteResource(${c.id},${rid})"
-class="text-red-600 font-bold">✖</button>
-
-${r.used.map((u,i)=>`
-<div onclick="toggleCircle(${c.id},${rid},${i})"
-class="circle ${u?"filled":""}"></div>
+<button onclick="${(!isHost && c.locked) ? '' : `deleteResource(${c.id},${rid})`}"
+class="text-red-600 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
+${r.used.map((u, i) => `
+<div onclick="${(!isHost && c.locked) ? '' : `toggleCircle(${c.id},${rid},${i})`}"
+class="circle ${u ? "filled" : ""}"></div>
 `).join("")}
-
 </div>
-
 `).join("")}
 
 <div class="flex justify-center gap-1 mt-1">
-
 <input id="resName_${c.id}" placeholder="Res"
 class="border rounded text-xs px-1 w-16 bg-white dark:bg-slate-700 dark:border-slate-600"
-onmousedown="event.stopPropagation()">
-
+onmousedown="event.stopPropagation()" ${(!isHost && c.locked) ? 'disabled' : ''}>
 <input id="resCount_${c.id}" type="number" placeholder="#"
 class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-slate-600"
-onmousedown="event.stopPropagation()">
-
-<button onclick="createResource(${c.id})"
-class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs">+</button>
-
+onmousedown="event.stopPropagation()" ${(!isHost && c.locked) ? 'disabled' : ''}>
+<button onclick="${(!isHost && c.locked) ? '' : `createResource(${c.id})`}"
+class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs" ${(!isHost && c.locked) ? 'disabled' : ''}>+</button>
 </div>
-
 </td>
 
 <td class="text-center">
-
 <div class="flex flex-wrap gap-1 justify-center">
-
-${c.conditions.map(cond=>`
+${c.conditions.map(cond => `
 <span class="bg-blue-200 dark:bg-blue-700 px-1 rounded text-[10px]">
 ${cond}
-<button onclick="removeCondition(${c.id},'${cond}')">x</button>
+<button onclick="${(!isHost && c.locked) ? '' : `removeCondition(${c.id},'${cond}')`}" ${(!isHost && c.locked) ? 'disabled' : ''}>x</button>
 </span>
 `).join("")}
-
 </div>
-
 <select class="text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
-onchange="addCondition(${c.id},this.value);this.value=''">
+onchange="${(!isHost && c.locked) ? '' : `addCondition(${c.id},this.value);this.value=''`}" ${(!isHost && c.locked) ? 'disabled' : ''}>
 <option value="">+</option>
-${CONDITIONS.map(c=>`<option>${c}</option>`).join("")}
+${CONDITIONS.map(c => `<option>${c}</option>`).join("")}
 </select>
-
 </td>
 
 <td class="p-1">
 <textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="update(${c.id},'notes',this.value)">${c.notes}</textarea>
+oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'notes',this.value)`}" ${notesDisabled}>${c.notes}</textarea>
 </td>
 
 <td class="text-center">
 <input type="color" value="${c.color}"
 onmousedown="event.stopPropagation()"
-oninput="updateColor(${c.id},this.value,this)">
+oninput="${(!isHost && c.locked) ? '' : `updateColor(${c.id},this.value,this)`}" ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <td class="text-center space-x-1">
+<button onclick="${(!isHost && c.locked) ? '' : `duplicateCombatant(${c.id})`}"
+class="bg-green-200 px-1 rounded text-green-800 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✔</button>
 
-<button onclick="duplicateCombatant(${c.id})"
-class="bg-green-200 px-1 rounded text-green-800 font-bold">✔</button>
+<button onclick="${(!isHost && c.locked) ? '' : `removeCombatant(${c.id})`}"
+class="bg-red-200 px-1 rounded text-red-800 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
 
-<button onclick="removeCombatant(${c.id})"
-class="bg-red-200 px-1 rounded text-red-800 font-bold">✖</button>
+${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounded text-xs">
+${c.locked ? 'Unlock' : 'Lock'}</button>` : ''}
+
+${isHost ? `<button onclick="toggleFog(${c.id})" class="bg-gray-300 px-1 rounded text-xs">
+${c.fogOfWar ? 'Reveal' : 'Hide'}</button>` : ''}
 
 </td>
-`
+`;
 
-table.appendChild(row)
+        table.appendChild(row);
 
-})
+    });
 
 }
 
