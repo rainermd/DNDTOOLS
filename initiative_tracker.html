@@ -536,7 +536,7 @@ function render() {
 
         if (index === currentTurn) row.classList.add("turnGlow");
 
-        const resourcesHidden = (!isHost && c.hide?.resources);
+        const resourcesHidden = c.hide?.resources;
         const displayNotes = getNotes(c.id);
 
         row.innerHTML = `
@@ -544,7 +544,7 @@ function render() {
 
 <!-- INIT -->
 <td class="text-center">
-<input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input type="number" value="${c.init === "" ? "" : c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="update(${c.id},'init',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
@@ -552,31 +552,31 @@ ${(!isHost && c.locked) ? 'disabled' : ''}>
 
 <!-- NAME -->
 <td class="text-center">
-<input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${c.name || ""}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="update(${c.id},'name',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
-${(!isHost) ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
+${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- HP -->
 <td class="text-center relative">
-<input value="${c.hp}" 
+<input value="${c.hp === "" ? "" : c.hp}" 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
 oninput="update(${c.id},'hp',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
-${(!isHost) ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
+${isHost ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- AC -->
 <td class="text-center">
-<input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
+<input value="${c.ac === "" ? "" : c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 oninput="update(${c.id},'ac',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
-${(!isHost) ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
+${isHost ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- RESOURCES -->
@@ -601,7 +601,7 @@ class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-s
 onmousedown="event.stopPropagation()" ${(!isHost && c.locked) ? 'disabled' : ''}>
 <button onclick="${(!isHost && c.locked) ? '' : `createResource(${c.id})`}"
 class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs" ${(!isHost && c.locked) ? 'disabled' : ''}>+</button>
-${(!isHost) ? `<button onclick="toggleHide(${c.id},'resources')">${c.hide.resources ? '😎' : '👁️'}</button>` : ''}
+${isHost ? `<button onclick="toggleHide(${c.id},'resources')">${c.hide.resources ? '😎' : '👁️'}</button>` : ''}
 </div>
 </td>
 
@@ -650,37 +650,6 @@ ${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounde
 
         table.appendChild(row);
     });
-
-    // Prevent overwriting focused inputs
-    table.querySelectorAll('input, textarea').forEach(input => {
-        const tr = input.closest('tr');
-        const cId = parseInt(tr.dataset.id);
-        const c = combatants.find(c => c.id === cId);
-
-        if (document.activeElement === input) return;
-
-        if (input.type === 'number') {
-            if (input.classList.contains('w-12')) input.value = c.init || "";
-            else if (input.classList.contains('w-14')) input.value = c.hp || "";
-            else if (input.classList.contains('w-12')) input.value = c.ac || "";
-        } else if (input.tagName === 'TEXTAREA') {
-            input.value = getNotes(c.id);
-        } else if (input.type === 'color') {
-            input.value = c.color;
-        } else {
-            input.value = c.name;
-        }
-    });
-}
-
-function rollInitiative(){
-combatants.forEach(c=>{
-if(c.init===""){
-c.init=Math.floor(Math.random()*20)+1
-}
-})
-saveState()
-render()
 }
 
 function toggleHide(id, field) {
