@@ -291,13 +291,16 @@ firebaseOnSnapshot(
 firebaseDoc(firebaseDB,"rooms",roomId),
 (snapshot)=>{
 
-if(!snapshot.exists()) return
+if(!snapshot.exists()){
+saveState()
+return
+}
 
-const data = snapshot.data()
+const data=snapshot.data()
 
-combatants = data.combatants || []
-currentTurn = data.currentTurn || 0
-round = data.round || 1
+combatants=data.combatants || []
+currentTurn=data.currentTurn || 0
+round=data.round || 1
 
 render()
 
@@ -305,15 +308,19 @@ render()
 
 }
 
-function saveState(){
+async function saveState(){
 
-firebaseSetDoc(
+if(!roomId) return
+
+await firebaseSetDoc(
 firebaseDoc(firebaseDB,"rooms",roomId),
 {
 combatants,
 currentTurn,
-round
-}
+round,
+lastUpdated: Date.now()
+},
+{ merge: true }
 )
 
 }
@@ -405,6 +412,8 @@ saveState()
 render()
 }
 
+let saveTimer=null
+
 function update(id,key,value){
 
 const c=combatants.find(c=>c.id===id)
@@ -415,7 +424,9 @@ c[key]=value===""?"":parseInt(value)
 c[key]=value
 }
 
-saveState()
+clearTimeout(saveTimer)
+saveTimer=setTimeout(saveState,300)
+
 }
 
 function updateColor(id,value,input){
