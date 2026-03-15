@@ -534,9 +534,7 @@ function render() {
         row.ondragover = dragOver;
         row.ondrop = dropRow;
 
-        if (index === currentTurn) {
-            row.classList.add("turnGlow");
-        }
+        if (index === currentTurn) row.classList.add("turnGlow");
 
         const resourcesHidden = (!isHost && c.hide?.resources);
         const displayNotes = getNotes(c.id);
@@ -544,11 +542,11 @@ function render() {
         row.innerHTML = `
 <td class="text-center font-bold">${index === currentTurn ? "➤" : ""}</td>
 
-<!-- INIT (no toggle) -->
+<!-- INIT -->
 <td class="text-center">
 <input type="number" value="${c.init}" class="w-12 border rounded text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="${(!isHost && c.locked) ? '' : `update(${c.id},'init',this.value)`}"
+oninput="update(${c.id},'init',this.value)"
 ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
@@ -556,9 +554,9 @@ ${(!isHost && c.locked) ? 'disabled' : ''}>
 <td class="text-center">
 <input value="${c.name}" class="border rounded w-32 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-${(!isHost && c.locked) ? 'disabled' : ''}
-oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'name',this.value) }`}">
-${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
+oninput="update(${c.id},'name',this.value)"
+${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost) ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- HP -->
@@ -567,18 +565,18 @@ ${isHost ? `<button onclick="toggleHide(${c.id},'name')">${c.hide.name ? '😎' 
 class="border rounded w-14 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
 onclick="openHPEdit(${c.id},this)"
-${(!isHost && c.locked) ? 'disabled' : ''}
-oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'hp',this.value) }`}">
-${isHost ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
+oninput="update(${c.id},'hp',this.value)"
+${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost) ? `<button onclick="toggleHide(${c.id},'hp')">${c.hide.hp ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- AC -->
 <td class="text-center">
 <input value="${c.ac}" class="border rounded w-12 text-center bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-${(!isHost && c.locked) ? 'disabled' : ''}
-oninput="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ update(${c.id},'ac',this.value) }`}">
-${isHost ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
+oninput="update(${c.id},'ac',this.value)"
+${(!isHost && c.locked) ? 'disabled' : ''}>
+${(!isHost) ? `<button onclick="toggleHide(${c.id},'ac')">${c.hide.ac ? '😎' : '👁️'}</button>` : ''}
 </td>
 
 <!-- RESOURCES -->
@@ -589,7 +587,7 @@ ${!resourcesHidden ? c.resources.map((r, rid) => `
 <button onclick="${(!isHost && c.locked) ? '' : `deleteResource(${c.id},${rid})`}"
 class="text-red-600 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
 ${r.used.map((u, i) => `
-<div onclick="${(!isHost && c.locked) ? '' : `if(document.activeElement!==this){ toggleCircle(${c.id},${rid},${i}) }`}"
+<div onclick="${(!isHost && c.locked) ? '' : `toggleCircle(${c.id},${rid},${i})`}"
 class="circle ${u ? "filled" : ""}"></div>
 `).join("")}
 </div>
@@ -603,7 +601,7 @@ class="border rounded text-xs px-1 w-10 bg-white dark:bg-slate-700 dark:border-s
 onmousedown="event.stopPropagation()" ${(!isHost && c.locked) ? 'disabled' : ''}>
 <button onclick="${(!isHost && c.locked) ? '' : `createResource(${c.id})`}"
 class="bg-gray-300 dark:bg-slate-600 px-1 rounded text-xs" ${(!isHost && c.locked) ? 'disabled' : ''}>+</button>
-${isHost ? `<button onclick="toggleHide(${c.id},'resources')">${c.hide.resources ? '😎' : '👁️'}</button>` : ''}
+${(!isHost) ? `<button onclick="toggleHide(${c.id},'resources')">${c.hide.resources ? '😎' : '👁️'}</button>` : ''}
 </div>
 </td>
 
@@ -624,19 +622,18 @@ ${CONDITIONS.map(c => `<option>${c}</option>`).join("")}
 </select>
 </td>
 
-<!-- NOTES (no toggle) -->
+<!-- NOTES -->
 <td class="p-1">
 <textarea class="border rounded w-full h-10 p-1 text-xs bg-white dark:bg-slate-700 dark:border-slate-600"
 onmousedown="event.stopPropagation()"
-oninput="updateNotes(${c.id}, this.value)"
->${displayNotes}</textarea>
+oninput="updateNotes(${c.id}, this.value)">${displayNotes}</textarea>
 </td>
 
 <!-- COLOR -->
 <td class="text-center">
 <input type="color" value="${c.color}"
 onmousedown="event.stopPropagation()"
-oninput="${(!isHost && c.locked) ? '' : `updateColor(${c.id},this.value,this)`}" ${(!isHost && c.locked) ? 'disabled' : ''}>
+oninput="updateColor(${c.id},this.value,this)" ${(!isHost && c.locked) ? 'disabled' : ''}>
 </td>
 
 <!-- ACTIONS -->
@@ -648,12 +645,31 @@ class="bg-green-200 px-1 rounded text-green-800 font-bold" ${(!isHost && c.locke
 class="bg-red-200 px-1 rounded text-red-800 font-bold" ${(!isHost && c.locked) ? 'disabled' : ''}>✖</button>
 
 ${isHost ? `<button onclick="toggleLock(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.locked ? '🔒' : '🔓'}</button>` : ''}
-
-${isHost ? `<button onclick="toggleFog(${c.id})" class="bg-gray-300 px-1 rounded text-xs">${c.fogOfWar ? 'Reveal' : 'Hide'}</button>` : ''}
 </td>
 `;
 
         table.appendChild(row);
+    });
+
+    // Prevent overwriting focused inputs
+    table.querySelectorAll('input, textarea').forEach(input => {
+        const tr = input.closest('tr');
+        const cId = parseInt(tr.dataset.id);
+        const c = combatants.find(c => c.id === cId);
+
+        if (document.activeElement === input) return;
+
+        if (input.type === 'number') {
+            if (input.classList.contains('w-12')) input.value = c.init || "";
+            else if (input.classList.contains('w-14')) input.value = c.hp || "";
+            else if (input.classList.contains('w-12')) input.value = c.ac || "";
+        } else if (input.tagName === 'TEXTAREA') {
+            input.value = getNotes(c.id);
+        } else if (input.type === 'color') {
+            input.value = c.color;
+        } else {
+            input.value = c.name;
+        }
     });
 }
 
