@@ -89,7 +89,7 @@ tailwind.config = {
 
 <script>
 document.getElementById("bugReportLink").addEventListener("click", function() {
-    const version = "1.0.0-beta";
+    const version = "1.0.1-beta";
     const page = window.location.href;
 
     const subject = encodeURIComponent("D&D Simulator Bug Report");
@@ -264,6 +264,7 @@ function createRoom() {
     });
 }
 
+const ROOM_EXPIRATION = 1000 * 60 * 60 * 6; // 6 hours
 
 function joinRoom(){
 
@@ -322,29 +323,54 @@ function commitUpdate(id, key, value){
 
 function loadState() {
     if (!roomId) return;
+
     const roomRef = firebaseDoc(firebaseDB, "rooms", roomId);
 
     firebaseOnSnapshot(roomRef, (snapshot) => {
+
         if (!snapshot.exists()) {
-            // Create empty room if somehow missing
-            if (isHost) saveState(); 
+            alert("Room does not exist.");
             return;
-        }
+            }
 
         const data = snapshot.data();
 
-        // ✅ Determine host robustly
+        // --- Expiration check ---
+        const expired = Date.now() - (data.lastUpdated || 0) > ROOM_EXPIRATION;
+
+        if (expired) {
+
+            // Host resets the room
+            const savedHostId = localStorage.getItem("hostRoom-" + roomId);
+
+            if (savedHostId === clientId) {
+
+                firebaseSetDoc(roomRef,{
+                    hostId: clientId,
+                    combatants: [],
+                    currentTurn: 0,
+                    round: 1,
+                    lastUpdated: Date.now()
+                });
+
+                alert("This room expired due to inactivity and was reset.");
+            }
+
+            return;
+        }
+
+        // --- Determine host ---
         const savedHostId = localStorage.getItem("hostRoom-" + roomId);
 
         if (data.hostId) {
             isHost = savedHostId === data.hostId;
         } else if (savedHostId) {
-            // Fallback if Firestore hasn’t written yet
             isHost = true;
-            // Write hostId to Firestore
-            firebaseSetDoc(firebaseDoc(firebaseDB, "rooms", roomId), {
+
+            firebaseSetDoc(roomRef,{
                 hostId: savedHostId
-            }, { merge: true });
+            },{ merge:true });
+
         } else {
             isHost = false;
         }
@@ -352,13 +378,25 @@ function loadState() {
         document.getElementById("roomDisplay").innerText =
             `Room: ${roomId}` + (isHost ? " (Host)" : "");
 
-        combatants = data.combatants || [];
-        currentTurn = data.currentTurn || 0;
-        round = data.round || 1;
+       const newState = JSON.stringify({
+combatants:data.combatants || [],
+currentTurn:data.currentTurn || 0,
+round:data.round || 1
+})
 
-        render();
+if(newState === lastSavedState) return
+
+lastSavedState = newState
+
+combatants = data.combatants || []
+currentTurn = data.currentTurn || 0
+round = data.round || 1
+
+render()
     });
 }
+
+let lastSavedState = ""
 
 function rollInitiative(){
 
@@ -379,16 +417,25 @@ async function saveState(){
 
 if(!roomId) return
 
+const state = JSON.stringify({
+combatants,
+currentTurn,
+round
+})
+
+if(state === lastSavedState) return
+
+lastSavedState = state
+
 await firebaseSetDoc(
 firebaseDoc(firebaseDB,"rooms",roomId),
 {
 combatants,
 currentTurn,
 round,
-lastUpdated: Date.now(),
-expiresAt: Date.now() + 1000 * 60 * 60 * 6 // expire after 6 hours
+lastUpdated: Date.now()
 },
-{ merge: true }
+{ merge:true }
 )
 
 }
