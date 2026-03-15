@@ -115,7 +115,30 @@ Actual result:
 });
 </script>
 <h1 class="text-3xl font-bold mb-4">🎲 Initiative Tracker</h1>
+<div id="roomUI" class="flex flex-wrap gap-2 items-center justify-center mb-6">
 
+<input id="roomInput"
+placeholder="Room Code"
+class="border rounded px-2 py-1 text-center text-sm bg-white dark:bg-slate-700 dark:border-slate-600">
+
+<button onclick="joinRoom()"
+class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow">
+Join
+</button>
+
+<button onclick="createRoom()"
+class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow">
+Create Room
+</button>
+
+<button onclick="copyInvite()"
+class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded shadow">
+Copy Invite
+</button>
+
+<span id="roomDisplay" class="text-sm font-semibold ml-2"></span>
+
+</div>
 <div class="text-lg font-semibold mb-6">
 Round: <span id="round">1</span>
 </div>
@@ -209,13 +232,47 @@ window.firebaseOnSnapshot = onSnapshot
 
 let roomId = new URLSearchParams(window.location.search).get("room")
 
-if(!roomId){
-roomId = Math.random().toString(36).substring(2,7).toUpperCase()
-window.location.search = "?room=" + roomId
+function generateRoom(){
+return Math.random().toString(36).substring(2,7).toUpperCase()
 }
 
-document.body.insertAdjacentHTML("afterbegin",
-`<div class="mb-4 text-sm">Room: <b>${roomId}</b></div>`)   
+function createRoom(){
+
+roomId = generateRoom()
+
+window.location.search = "?room=" + roomId
+
+}
+
+function joinRoom(){
+
+const code = document.getElementById("roomInput").value.trim().toUpperCase()
+
+if(!code) return
+
+window.location.search = "?room=" + code
+
+}
+
+function copyInvite(){
+
+const url = window.location.origin + window.location.pathname + "?room=" + roomId
+
+navigator.clipboard.writeText(url)
+
+alert("Invite link copied!")
+
+}
+
+if(!roomId){
+
+document.getElementById("roomDisplay").innerText = "No room joined"
+
+}else{
+
+document.getElementById("roomDisplay").innerText = "Room: " + roomId
+
+}
 
 let combatants=[]
 let currentTurn=0
@@ -229,7 +286,7 @@ const CONDITIONS=[
 ]
 
 function loadState(){
-
+if(!roomId) return
 firebaseOnSnapshot(
 firebaseDoc(firebaseDB,"rooms",roomId),
 (snapshot)=>{
