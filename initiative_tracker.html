@@ -198,10 +198,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.db = db;
-window.doc = doc;
-window.setDoc = setDoc;
-window.onSnapshot = onSnapshot;
+window.firebaseDB = db
+window.firebaseDoc = doc
+window.firebaseSetDoc = setDoc
+window.firebaseOnSnapshot = onSnapshot
 
 </script>
 
@@ -230,8 +230,8 @@ const CONDITIONS=[
 
 function loadState(){
 
-onSnapshot(
-doc(db,"rooms",roomId),
+firebaseOnSnapshot(
+firebaseDoc(firebaseDB,"rooms",roomId),
 (snapshot)=>{
 
 if(!snapshot.exists()) return
@@ -250,8 +250,8 @@ render()
 
 function saveState(){
 
-setDoc(
-doc(db,"rooms",roomId),
+firebaseSetDoc(
+firebaseDoc(firebaseDB,"rooms",roomId),
 {
 combatants,
 currentTurn,
@@ -582,13 +582,13 @@ render()
 
 function clearEncounter(){
 
-localStorage.removeItem(STORAGE_KEY)
-
 combatants=[]
 currentTurn=0
 round=1
 
+saveState()
 render()
+
 }
 
 document.addEventListener("keydown",function(e){
