@@ -317,7 +317,7 @@ async function createRoom() {
     // Update UI without reloading
     document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
 
-    // Start listening to room state
+    // ✅ Start listening to room state
     loadState();
 }
 
@@ -368,40 +368,31 @@ const CONDITIONS=[
 ]
 
 function loadState(){
+    if(!roomId) return;
 
-if(!roomId) return
+    // room state
+    firebaseOnSnapshot(
+        firebaseDoc(firebaseDB,"rooms",roomId),
+        (snapshot)=>{
+            if(!snapshot.exists()) return;
+            const data=snapshot.data();
+            currentTurn=data.currentTurn || 0;
+            round=data.round || 1;
+            render();
+        }
+    );
 
-// room state
-firebaseOnSnapshot(
-firebaseDoc(firebaseDB,"rooms",roomId),
-(snapshot)=>{
-
-if(!snapshot.exists()) return
-
-const data=snapshot.data()
-
-currentTurn=data.currentTurn || 0
-round=data.round || 1
-
-render()
-
-})
-
-// combatants collection
-firebaseOnSnapshot(
-firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
-(snapshot)=>{
-
-combatants=[]
-
-snapshot.forEach(doc=>{
-combatants.push({id:doc.id,...doc.data()})
-})
-
-render()
-
-})
-
+    // combatants collection
+    firebaseOnSnapshot(
+        firebaseCollection(firebaseDB,"rooms",roomId,"combatants"),
+        (snapshot)=>{
+            combatants=[];
+            snapshot.forEach(doc=>{
+                combatants.push({id:doc.id,...doc.data()});
+            });
+            render();
+        }
+    );
 }
 
 async function saveState(){
