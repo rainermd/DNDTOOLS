@@ -342,7 +342,7 @@ Actual result:
         document.addEventListener("input", updateSimButton);
         updateSimButton();
 
-        function goToMenu(){ window.location.href = "/"; }
+        function goToMenu(){ window.location.href = "index.html"; }
 
         function toggleDarkMode(){
             const root = document.documentElement;
@@ -433,7 +433,11 @@ function performAttacks(attacker,enemies,randomTarget,finish){
             target=living.reduce((a,b)=>a.hp<b.hp?a:b)
         }
 
-        const [hit,crit]=attackRoll(attacker,target,true)
+        const [hit,crit]=attackRoll(
+    attacker,
+    target,
+    document.getElementById("auto_hit").checked
+)
 
         if(hit){
             const dmg=rollDamage(attacker.n,attacker.dice,attacker.mod,crit)
@@ -578,6 +582,24 @@ function runCombat(){
 
     displayResults(results)
 
+}
+function bar(label, value, color){
+
+    const percent = (value*100).toFixed(1) + "%"
+
+    return `
+    <div class="mb-3">
+        <div class="flex justify-between text-sm mb-1">
+            <span>${label}</span>
+            <span>${percent}</span>
+        </div>
+        <div class="w-full bg-gray-300 dark:bg-slate-700 rounded h-4 overflow-hidden">
+            <div class="${color} h-4 transition-all duration-700"
+                 style="width:0"
+                 data-width="${percent}">
+            </div>
+        </div>
+    </div>`
 }
     </script>
 
