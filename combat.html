@@ -309,44 +309,6 @@ Actual result:
             }
         }
 
-        async function runCombat(){
-
-            if(!statsValid()){
-                alert("Please enter valid values for all player/monster stats!");
-                return;
-            }
-
-            const party = collectCreatures("party", partyCount);
-            const monsters = collectCreatures("monster", monsterCount);
-            const res = await fetch("/combat_simulate", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    party: party,
-                    monsters: monsters,
-                    auto_hit: document.getElementById("auto_hit").checked,
-                    random_target: document.getElementById("random_target").checked,
-                    monsters_finish: document.getElementById("monsters_finish").checked
-                })
-            });
-            const data = await res.json();
-            displayResults(data);
-        }
-
-        function bar(label,value,color){
-            return `
-                <div class="mb-4">
-                    <div class="flex justify-between text-sm mb-1">
-                        <span>${label}</span>
-                        <span>${(value*100).toFixed(1)}%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 dark:bg-slate-700 rounded h-4">
-                        <div class="${color} h-4 rounded transition-all duration-700 ease-out" style="width:0%" data-width="${value*100}%"></div>
-                    </div>
-                </div>
-            `;
-        }
-
         function classify(win){
             if(win>0.9) return ["Easy","bg-green-500"];
             if(win>0.7) return ["Medium","bg-yellow-500"];
@@ -392,6 +354,231 @@ Actual result:
                 localStorage.setItem("theme","dark");
             }
         }
+
+    /* =========================
+   COMBAT SIMULATION ENGINE
+   ========================= */
+
+function rollDice(n,d){
+    let total=0
+    for(let i=0;i<n;i++){
+        total+=Math.floor(Math.random()*d)+1
+    }
+    return total
+}
+
+function rollDamage(n,dice,mod,crit){
+    if(crit){
+        return Math.max(0,rollDice(2*n,dice)+mod)
+    }
+    return Math.max(0,rollDice(n,dice)+mod)
+}
+
+function attackRoll(attacker,defender,autoHit){
+
+    if(defender.hp<=0){
+        defender.death_fail+=2
+        return [false,false]
+    }
+
+    const roll=Math.floor(Math.random()*20)+1
+
+    if(roll===1) return [false,false]
+
+    const crit=(roll===20)
+
+    let hit = roll + attacker.attack_bonus >= defender.ac
+
+    if(crit){
+        if(autoHit) return [true,true]
+        return [hit,true]
+    }
+
+    return [hit,false]
+}
+
+function rollInitiative(creatures){
+
+    return creatures
+        .map(c=>({
+            total:Math.floor(Math.random()*20)+1 + c.init,
+            tie:c.init,
+            rand:Math.random(),
+            c:c
+        }))
+        .sort((a,b)=>b.total-a.total || b.tie-a.tie || b.rand-a.rand)
+        .map(x=>x.c)
+
+}
+
+function performAttacks(attacker,enemies,randomTarget,finish){
+
+    for(let i=0;i<attacker.attacks;i++){
+
+        let living
+
+        if(finish){
+            living=enemies.filter(e=>!e.dead)
+        }else{
+            living=enemies.filter(e=>e.hp>0 && !e.dead)
+        }
+
+        if(living.length===0) return
+
+        let target
+
+        if(randomTarget){
+            target=living[Math.floor(Math.random()*living.length)]
+        }else{
+            target=living.reduce((a,b)=>a.hp<b.hp?a:b)
+        }
+
+        const [hit,crit]=attackRoll(attacker,target,true)
+
+        if(hit){
+            const dmg=rollDamage(attacker.n,attacker.dice,attacker.mod,crit)
+            target.hp-=dmg
+        }
+
+    }
+
+}
+
+function deathSave(c){
+
+    const roll=Math.floor(Math.random()*20)+1
+
+    if(roll===1) c.death_fail+=2
+    else if(roll===20){
+        c.hp=1
+        c.death_fail=0
+        c.death_success=0
+        return
+    }
+    else if(roll>=10) c.death_success++
+    else c.death_fail++
+
+    if(c.death_success>=3) c.stable=true
+    if(c.death_fail>=3) c.dead=true
+
+}
+
+function simulateCombat(partyTemplate,monsterTemplate,maxRounds=1000){
+
+    const party = partyTemplate.map(p=>({...p}))
+    const monsters = monsterTemplate.map(m=>({...m}))
+
+    const combatants=[...party,...monsters]
+
+    combatants.forEach(c=>{
+        c.death_success=0
+        c.death_fail=0
+        c.dead=false
+        c.stable=false
+    })
+
+    const initiative=rollInitiative(combatants)
+
+    let rounds=0
+
+    while(rounds<maxRounds){
+
+        rounds++
+
+        for(const creature of initiative){
+
+            if(creature.dead || creature.stable) continue
+
+            if(creature.hp<=0 && creature.is_player){
+                deathSave(creature)
+                continue
+            }
+
+            if(creature.hp<=0) continue
+
+            const enemies = creature.is_player ? monsters : party
+
+            performAttacks(
+                creature,
+                enemies,
+                document.getElementById("random_target").checked,
+                document.getElementById("monsters_finish").checked
+            )
+
+        }
+
+        const partyAlive=party.some(p=>p.hp>0 && !p.dead)
+        const monstersAlive=monsters.some(m=>m.hp>0 && !m.dead)
+
+        if(!partyAlive || !monstersAlive) break
+
+    }
+
+    const partyWin = !monsters.some(m=>m.hp>0 && !m.dead)
+    const tpk = party.every(p=>p.hp<=0 || p.dead)
+
+    let deaths
+
+    if(tpk){
+        deaths=party.filter(p=>p.hp<=0 || p.dead).length
+    }else{
+        deaths=party.filter(p=>p.dead).length
+    }
+
+    return {partyWin,tpk,deaths,rounds}
+
+}
+
+function runSimulations(party,monsters,N=3000){
+
+    let wins=0
+    let tpks=0
+    let rounds=[]
+    let deaths=[]
+
+    for(let i=0;i<N;i++){
+
+        const r=simulateCombat(party,monsters)
+
+        rounds.push(r.rounds)
+        deaths.push(r.deaths)
+
+        if(r.partyWin) wins++
+        if(r.tpk) tpks++
+
+    }
+
+    return{
+
+        party_win_probability:wins/N,
+        tpk_probability:tpks/N,
+        avg_rounds:rounds.reduce((a,b)=>a+b,0)/rounds.length,
+        avg_player_deaths:deaths.reduce((a,b)=>a+b,0)/deaths.length,
+        any_death:deaths.filter(d=>d>0).length/N
+
+    }
+
+}
+
+/* =========================
+   MAIN RUN BUTTON
+   ========================= */
+
+function runCombat(){
+
+    if(!statsValid()){
+        alert("Please enter valid values for all player/monster stats!")
+        return
+    }
+
+    const party=collectCreatures("party",partyCount)
+    const monsters=collectCreatures("monster",monsterCount)
+
+    const results=runSimulations(party,monsters,2000)
+
+    displayResults(results)
+
+}
     </script>
 
     <!-- DARK MODE BUTTON -->
