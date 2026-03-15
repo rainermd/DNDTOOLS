@@ -240,8 +240,8 @@ let roomId = new URLSearchParams(window.location.search).get("room")
 
 // ----------------- HOST / PLAYER DETECTION -----------------
 let hostId = null
+let isHost = null // null = not in room yet
 let userId = crypto.randomUUID() // unique per user
-let isHost = false
 
 // Listen for room host info
 if(roomId){
@@ -296,15 +296,11 @@ async function createRoom() {
             hostId: userId
         }
     );
+    isHost = true; // local host status
+hostId = userId;
+document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
+loadState(); // now safe
 
-    // Immediately mark as host
-    isHost = true;
-    hostId = userId;
-
-    document.getElementById("roomDisplay").innerText = "Room: " + roomId + " (Host)";
-
-    // Start listening to state changes
-    loadState();
 }
 
 
@@ -353,30 +349,17 @@ const CONDITIONS=[
 "Stunned","Unconscious","Concentrating"
 ]
 
-function loadState() {
-    if (!roomId) return;
+firebaseOnSnapshot(firebaseDoc(firebaseDB, "rooms", roomId), (snapshot) => {
+    if (!snapshot.exists()) return;
+    const data = snapshot.data();
+    currentTurn = data.currentTurn || 0;
+    round = data.round || 1;
 
-    // Listen to room info (host + round + turn)
-    firebaseOnSnapshot(firebaseDoc(firebaseDB, "rooms", roomId), (snapshot) => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.data();
-        currentTurn = data.currentTurn || 0;
-        round = data.round || 1;
-
-        // Update host detection
-        hostId = data.hostId;
-        isHost = (hostId === userId);
-
-        render();
-    });
-
-    // Listen to combatants
-    firebaseOnSnapshot(firebaseCollection(firebaseDB, "rooms", roomId, "combatants"), (snapshot) => {
-        combatants = [];
-        snapshot.forEach(doc => combatants.push({ id: doc.id, ...doc.data() }));
-        render();
-    });
-}
+    // Update host detection
+    hostId = data.hostId;
+    isHost = (hostId === userId); // now properly sets host status
+    render();
+});
 
 
 async function saveState(){
@@ -584,6 +567,9 @@ const locked = c.locked && !isHost
 const fogged = c.hiddenFields || []
 
 function fieldDisabled(field){
+    if(isHost === null) return false; // not in a room yet, allow editing
+    const locked = c.locked && !isHost
+    const fogged = c.hiddenFields || []
     return locked || (fogged.includes(field) && !isHost)
 }
 
